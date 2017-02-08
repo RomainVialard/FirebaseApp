@@ -52,7 +52,7 @@ FirebaseApp_.getDatabaseByUrl = function(url, optSecret) {
 baseClass_.createAuthToken = function(userEmail,optAuthData,serviceAccountEmail,privateKey){
 	if(arguments.length > 2){ //more then two means they want to use a service account
 		if(typeof arguments[1] === "string"){ // no optional data
-			this.base.serviceAccountEmail =  arguments[1]
+			this.base.serviceAccountEmail =  arguments[1];
 			this.base.privateKey = arguments[2];
 			optAuthData = {};
 		}else if(typeof arguments[1] === "object") { // optional data is present
@@ -67,7 +67,7 @@ baseClass_.createAuthToken = function(userEmail,optAuthData,serviceAccountEmail,
 
 
 /**
- * Generates an authorization token to firebase
+ * Generates an authorization token to Firebase
  *
  * @param  {string} userEmail the email account of the user you want to authenticate
  * @param  {object} optAuthData keypairs of data to be associated to this user.
@@ -266,7 +266,13 @@ FirebaseApp_._buildRequest = function (method, base, path, data, optQueryParamet
 		}
 	}
 	if (method == "post" && JSON.parse(result)['name']) return JSON.parse(result)['name'];
-	return JSON.parse(result);
+	// Sometimes JSON.parse() fails with "Unexpected token: <"
+	try {
+		return JSON.parse(result);
+	}
+	catch(e) {
+		throw new Error(result);
+	}
 };
 
 FirebaseApp_._sendRequest = function (url, params) {
@@ -288,11 +294,9 @@ FirebaseApp_._sendRequest = function (url, params) {
 	if (result.toString().indexOf('auth=') != -1) {
 		return new Error("We're sorry, a server error occurred. Please wait a bit and try again.");
 	}
-	if (responseCode == 400 || responseCode == 401 || responseCode == 500) {
-		if (result.toString().indexOf('error') != -1) throw new Error(JSON.parse(result).error);
+	if (responseCode == 400 || responseCode == 401 || responseCode == 500 || responseCode == 502) {
+		if (result.toString().indexOf('error') != -1) return new Error(JSON.parse(result).error);
 		else return new Error("We're sorry, a server error occurred. Please wait a bit and try again.");
 	}
 	return result;
 };
-
-
