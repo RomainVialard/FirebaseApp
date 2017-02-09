@@ -31,7 +31,7 @@ var baseClass_ = FirebaseApp_.base.prototype;
  * @param  {string} optSecret a Firebase app secret
  * @return {Database} the Database found at the given URL
  */
-FirebaseApp_.getDatabaseByUrl = function(url, optSecret) {
+function getDatabaseByUrl(url, optSecret) {
 	if (!optSecret) optSecret = '';
 	var base = new FirebaseApp_.base({
 		url: url,
