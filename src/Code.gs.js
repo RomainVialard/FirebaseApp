@@ -229,6 +229,13 @@ FirebaseApp_._buildRequest = function (method, base, path, data, optQueryParamet
     muteHttpExceptions: true
   }
   var url = base.url + path + ".json";
+  
+  // Check if authentication done via OAuth 2 access token
+  if (base.secret !== "" && base.secret.indexOf('ya29.') != -1) {
+    params.headers["Authorization"] = "Bearer " + base.secret;
+    base.secret = "";
+  }
+  
   if (optQueryParameters) {
     url += "?";
     if (base.secret !== "") {
