@@ -229,18 +229,19 @@ FirebaseApp_._buildRequest = function (method, base, path, data, optQueryParamet
     muteHttpExceptions: true
   }
   var url = base.url + path + ".json";
+  var authToken = base.secret;
   
   // Check if authentication done via OAuth 2 access token
-  if (base.secret !== "" && base.secret.indexOf('ya29.') != -1) {
-    params.headers["Authorization"] = "Bearer " + base.secret;
-    base.secret = "";
+  if (authToken !== "" && authToken.indexOf('ya29.') != -1) {
+    params.headers["Authorization"] = "Bearer " + authToken;
+    authToken = "";
   }
   
   if (optQueryParameters) {
     url += "?";
-    if (base.secret !== "") {
-      if ("auth" in optQueryParameters) optQueryParameters["auth"] = base.secret;
-      else url += "auth=" + base.secret + "&";
+    if (authToken !== "") {
+      if ("auth" in optQueryParameters) optQueryParameters["auth"] = authToken;
+      else url += "auth=" + authToken + "&";
     }
     var parameters = [];
     for (var key in optQueryParameters) {
@@ -253,8 +254,8 @@ FirebaseApp_._buildRequest = function (method, base, path, data, optQueryParamet
     }
     url += parameters.join("&");
   }
-  else if (base.secret !== "") {
-    url += "?auth=" + base.secret;
+  else if (authToken !== "") {
+    url += "?auth=" + authToken;
   }
   if (data || data == 0) params.payload = JSON.stringify(data);
   if (method === "patch") {
