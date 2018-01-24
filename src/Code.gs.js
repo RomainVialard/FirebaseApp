@@ -172,6 +172,73 @@ baseClass_.getData = function (path, optQueryParameters) {
 };
 
 /**
+ * Returns data in all specified path
+ *
+ * @param  {array} requests array of requests
+ * @return {object} responses to each requests
+ */
+baseClass_.getAllData = function (requests) {
+  var base = this.base;
+  
+  return FirebaseApp_._buildAllRequests(requests, base);
+};
+
+FirebaseApp_._buildAllRequests = function (requests, base) {
+    var authToken = base.secret,
+        finalRequests = [],
+        url = ""
+
+  for(var y = 0; y < requests.length; y++){
+    url = "";
+    if(requests[y].url) url = base.url + requests[y].url + ".json";
+    else url = base.url + requests[y] + ".json";
+  
+    if (requests[y].optQueryParameters) {
+      url += "?";
+      if (authToken !== "") {
+        if ("auth" in requests[y].optQueryParameters) requests[y].optQueryParameters["auth"] = authToken;
+        else url += "auth=" + authToken + "&";
+      }
+      var parameters = [];
+      for (var key in requests[y].optQueryParameters) {
+        if (key != "auth" && key != "shallow" && key != "print" && key != "limitToFirst" && key != "limitToLast") {
+          if (isNaN(requests[y].optQueryParameters[key]) && typeof requests[y].optQueryParameters[key] !== 'boolean') {
+            requests[y].optQueryParameters[key] = encodeURIComponent('"' + requests[y].optQueryParameters[key] + '"');
+          }
+        }
+        parameters.push(key + "=" + requests[y].optQueryParameters[key]);
+      }
+      url += parameters.join("&");
+    }
+    else if (authToken !== "") {
+      url += "?auth=" + authToken;
+    }
+    finalRequests[y] = {url: url, headers: {}, muteHttpExceptions: true}
+  }
+  return FirebaseApp_._sendAllRequests(finalRequests, requests);
+}
+
+FirebaseApp_._sendAllRequests = function (finalRequests, requests) {
+  try{
+    var dataArray = UrlFetchApp.fetchAll(finalRequests),
+        data = {};
+  
+    if (dataArray.toString().indexOf('auth=') != -1) {
+      return new Error("We're sorry, a server error occurred. Please wait a bit and try again.");
+    }
+    
+    for(var i = 0; i < dataArray.length; i++){
+      if(typeof requests[i] === 'string') data[requests[i]] = JSON.parse(dataArray[i]);
+      else if (typeof requests[i] === 'object' && requests[i].url) data[requests[i].url] = JSON.parse(dataArray[i]);
+    }
+  }
+  catch(e){
+    return new Error("We're sorry, a server error occurred. Please wait a bit and try again.");
+  }
+  return data;
+}
+
+/**
  * Generates a new child location using a unique key
  *
  * @param  {string} path the path where to create a new child
