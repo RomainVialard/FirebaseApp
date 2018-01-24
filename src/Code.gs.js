@@ -37,7 +37,7 @@ function getDatabaseByUrl(url, optSecret) {
     secret: optSecret
   });
   return base;
-};
+}
 
 /**
  * Generates an authorization token to firebase
@@ -64,7 +64,7 @@ baseClass_.createAuthToken = function (userEmail, optAuthData, serviceAccountEma
   else {
     return this.createLegacyAuthToken_(userEmail, optAuthData);
   }
-}
+};
 
 
 /**
@@ -183,60 +183,98 @@ baseClass_.getAllData = function (requests) {
   return FirebaseApp_._buildAllRequests(requests, base);
 };
 
+FirebaseApp_._keyWhiteList = {
+  auth: true,
+  shallow: true,
+  print: true,
+  limitToFirst: true,
+  limitToLast: true
+};
+
+/**
+ * Pre-build all Urls
+ * 
+ * @param {Array.<string | {url: string, optQueryParameters: {}}>} requests
+ * @param base
+ * 
+ * @return {*}
+ * @private
+ */
 FirebaseApp_._buildAllRequests = function (requests, base) {
-    var authToken = base.secret,
-        finalRequests = [],
-        url = "";
-
-  for(var y = 0; y < requests.length; y++){
-    url = "";
-    if(requests[y].url) url = base.url + requests[y].url + ".json";
-    else url = base.url + requests[y] + ".json";
+  var authToken = base.secret,
+    finalRequests = [],
+    url;
   
-    if (requests[y].optQueryParameters) {
-      url += "?";
-      if (authToken !== "") {
-        if ("auth" in requests[y].optQueryParameters) requests[y].optQueryParameters["auth"] = authToken;
-        else url += "auth=" + authToken + "&";
-      }
-      var parameters = [];
-      for (var key in requests[y].optQueryParameters) {
-        if (key != "auth" && key != "shallow" && key != "print" && key != "limitToFirst" && key != "limitToLast") {
-          if (isNaN(requests[y].optQueryParameters[key]) && typeof requests[y].optQueryParameters[key] !== 'boolean') {
-            requests[y].optQueryParameters[key] = encodeURIComponent('"' + requests[y].optQueryParameters[key] + '"');
-          }
-        }
-        parameters.push(key + "=" + requests[y].optQueryParameters[key]);
-      }
-      url += parameters.join("&");
+  // Prepare all URLs requests
+  for (var i = 0; i < requests.length; i++){
+    url = "";
+    
+    if (requests[i].url) url = base.url + requests[i].url + ".json";
+    else url = base.url + requests[i] + ".json";
+    
+    // Init query parameters
+    requests[i].optQueryParameters = requests[i].optQueryParameters || {};
+    
+    // Add authToken if needed
+    if (authToken !== "") {
+      requests[i].optQueryParameters["auth"] = authToken;
     }
-    else if (authToken !== "") {
-      url += "?auth=" + authToken;
+    
+    // Build parameters before adding them in the url
+    var parameters = [];
+    for (var key in requests[i].optQueryParameters) {
+      
+      // Encode non boolean parameters (except whitelisted keys)
+      if (!FirebaseApp_._keyWhiteList[key] && isNaN(requests[i].optQueryParameters[key]) && typeof requests[i].optQueryParameters[key] !== 'boolean') {
+        requests[i].optQueryParameters[key] = encodeURIComponent('"' + requests[i].optQueryParameters[key] + '"');
+      }
+      
+      parameters.push(key + "=" + requests[i].optQueryParameters[key]);
     }
-    finalRequests[y] = {url: url, headers: {}, muteHttpExceptions: true}
+    
+    // Add all parameters
+    url += "?"+ parameters.join("&");
+    
+    // Store request
+    finalRequests.push({url: url, headers: {}, muteHttpExceptions: true});
   }
+  
   return FirebaseApp_._sendAllRequests(finalRequests, requests);
-}
+};
 
+/**
+ * Send all request via UrlFetchApp.fetchAll
+ * 
+ * @param {Array.<{url: string, headers: {}, muteHttpExceptions: boolean}>} finalRequests
+ * @param requests
+ * 
+ * @return {*}
+ * @private
+ */
 FirebaseApp_._sendAllRequests = function (finalRequests, requests) {
   try{
     var dataArray = UrlFetchApp.fetchAll(finalRequests),
-        data = {};
-  
-    if (dataArray.toString().indexOf('auth=') != -1) {
+      data = {};
+    
+    if (dataArray.toString().indexOf('auth=') !== -1) {
       return new Error("We're sorry, a server error occurred. Please wait a bit and try again.");
     }
     
-    for(var i = 0; i < dataArray.length; i++){
-      if(typeof requests[i] === 'string') data[requests[i]] = JSON.parse(dataArray[i]);
-      else if (typeof requests[i] === 'object' && requests[i].url) data[requests[i].url] = JSON.parse(dataArray[i]);
+    for (var i = 0; i < dataArray.length; i++){
+      if (typeof requests[i] === 'string'){
+        data[requests[i]] = JSON.parse(dataArray[i]);
+      }
+      else if (typeof requests[i] === 'object' && requests[i].url){
+        data[requests[i].url] = JSON.parse(dataArray[i]);
+      }
     }
   }
   catch(e){
     return new Error("We're sorry, a server error occurred. Please wait a bit and try again.");
   }
+  
   return data;
-}
+};
 
 /**
  * Generates a new child location using a unique key
