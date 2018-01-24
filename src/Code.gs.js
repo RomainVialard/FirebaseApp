@@ -186,7 +186,7 @@ baseClass_.getAllData = function (requests) {
 FirebaseApp_._buildAllRequests = function (requests, base) {
     var authToken = base.secret,
         finalRequests = [],
-        url = ""
+        url = "";
 
   for(var y = 0; y < requests.length; y++){
     url = "";
