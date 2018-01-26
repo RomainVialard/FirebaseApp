@@ -1,7 +1,7 @@
 /*
 FirebaseApp
 
-Copyright (c) 2016 - 2018 Romain Vialard - Ludovic Lefebure - Spencer Easton
+Copyright (c) 2016 - 2018 Romain Vialard - Ludovic Lefebure - Spencer Easton - Jean-Rémi Delteil - Simon Debray
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -172,14 +172,13 @@ baseClass_.getData = function (path, optQueryParameters) {
 };
 
 /**
- * Returns data in all specified path
+ * Returns data in all specified paths
  *
- * @param  {array} requests array of requests
+ * @param  {Array} requests array of requests
  * @return {object} responses to each requests
  */
 baseClass_.getAllData = function (requests) {
   var base = this.base;
-  
   return FirebaseApp_._buildAllRequests(requests, base);
 };
 
@@ -195,26 +194,40 @@ FirebaseApp_._keyWhiteList = {
  * Pre-build all Urls
  * 
  * @param {Array.<string | {url: string, optQueryParameters: {}}>} requests
- * @param base
+ * @param {Object} base information of the database
  * 
  * @return {*}
  * @private
  */
 FirebaseApp_._buildAllRequests = function (requests, base) {
   var authToken = base.secret,
-    finalRequests = [],
-    url;
-  
+      finalRequests = [],
+      url,
+      headers = {};
+
+  // Check if authentication done via OAuth 2 access token
+  if (authToken !== "" && authToken.indexOf('ya29.') != -1) {
+    headers["Authorization"] = "Bearer " + authToken;
+    authToken = "";
+  }
+
   // Prepare all URLs requests
   for (var i = 0; i < requests.length; i++){
-    url = "";
-    
-    if (requests[i].url) url = base.url + requests[i].url + ".json";
-    else url = base.url + requests[i] + ".json";
-    
-    // Init query parameters
-    requests[i].optQueryParameters = requests[i].optQueryParameters || {};
-    
+
+    // Transform string request in object
+    if(typeof requests[i] == "string"){
+      requests[i] = {
+        url: requests[i],
+        optQueryParameters: {}
+      };
+    }
+    else {
+      // Make sure that query parameters are init
+      requests[i].optQueryParameters = requests[i].optQueryParameters || {};
+    }
+
+    url = base.url + requests[i].url + ".json";
+
     // Add authToken if needed
     if (authToken !== "") {
       requests[i].optQueryParameters["auth"] = authToken;
@@ -234,44 +247,31 @@ FirebaseApp_._buildAllRequests = function (requests, base) {
     
     // Add all parameters
     url += "?"+ parameters.join("&");
-    
+
     // Store request
-    finalRequests.push({url: url, headers: {}, muteHttpExceptions: true});
+    finalRequests.push({url: url, headers: headers, muteHttpExceptions: true});
   }
-  
+
   return FirebaseApp_._sendAllRequests(finalRequests, requests);
 };
 
 /**
- * Send all request via UrlFetchApp.fetchAll
+ * Send all request using UrlFetchApp.fetchAll()
  * 
- * @param {Array.<{url: string, headers: {}, muteHttpExceptions: boolean}>} finalRequests
- * @param requests
- * 
+ * @param {Object.<{url: string, headers: {}, muteHttpExceptions: boolean}>} finalRequests
+ * @param {Object<{url: string, optQueryParameters: {}}>} originalsRequests location of each data
+ *
  * @return {*}
  * @private
  */
-FirebaseApp_._sendAllRequests = function (finalRequests, requests) {
-  try{
+FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests) {
     var dataArray = UrlFetchApp.fetchAll(finalRequests),
       data = {};
-    
-    if (dataArray.toString().indexOf('auth=') !== -1) {
-      return new Error("We're sorry, a server error occurred. Please wait a bit and try again.");
-    }
-    
+
+    // Store each response in an object with the respective Firebase path as key
     for (var i = 0; i < dataArray.length; i++){
-      if (typeof requests[i] === 'string'){
-        data[requests[i]] = JSON.parse(dataArray[i]);
-      }
-      else if (typeof requests[i] === 'object' && requests[i].url){
-        data[requests[i].url] = JSON.parse(dataArray[i]);
-      }
+        data[originalsRequests[i].url] = JSON.parse(dataArray[i]);
     }
-  }
-  catch(e){
-    return new Error("We're sorry, a server error occurred. Please wait a bit and try again.");
-  }
   
   return data;
 };
@@ -323,50 +323,69 @@ baseClass_.removeData = function (path, optQueryParameters) {
   return FirebaseApp_._buildRequest("delete", this.base, path, null, optQueryParameters);
 };
 
+/**
+ * Pre-build the request
+ *
+ * @param method {String} the type of the request made to Firebase
+ * @param base {Object} base information of Firebase
+ * @param path {String} path to the whished location of Firebase
+ * @param data {*} data to insert in the location
+ * @param optQueryParameters {Object} optional query parameter for the call
+ *
+ * @return {*}
+ * @private
+ */
 FirebaseApp_._buildRequest = function (method, base, path, data, optQueryParameters) {
   if (optQueryParameters && typeof optQueryParameters != "object") {
     throw new Error("optQueryParameters must be an object");
   }
+
   if (!path) path = '';
+
   var params = {
     method: method,
     headers: {},
     muteHttpExceptions: true
-  }
-  var url = base.url + path + ".json";
-  var authToken = base.secret;
-  
+  },
+      url = base.url + path + ".json",
+      authToken = base.secret;
+
   // Check if authentication done via OAuth 2 access token
   if (authToken !== "" && authToken.indexOf('ya29.') != -1) {
     params.headers["Authorization"] = "Bearer " + authToken;
     authToken = "";
   }
-  
-  if (optQueryParameters) {
-    url += "?";
-    if (authToken !== "") {
-      if ("auth" in optQueryParameters) optQueryParameters["auth"] = authToken;
-      else url += "auth=" + authToken + "&";
+
+  // Init query parameters
+  optQueryParameters = optQueryParameters || {};
+
+  // Add authToken if needed
+  if(authToken !== "") optQueryParameters["auth"] = authToken;
+
+  // Build parameters before adding them in the url
+  var parameters = [];
+  for (var key in optQueryParameters) {
+
+    // Encode non boolean parameters (except whitelisted keys)
+    if (!FirebaseApp_._keyWhiteList[key] && isNaN(optQueryParameters[key]) && typeof optQueryParameters[key] !== 'boolean') {
+      optQueryParameters[key] = encodeURIComponent('"' + optQueryParameters[key] + '"');
     }
-    var parameters = [];
-    for (var key in optQueryParameters) {
-      if (key != "auth" && key != "shallow" && key != "print" && key != "limitToFirst" && key != "limitToLast") {
-        if (isNaN(optQueryParameters[key]) && typeof optQueryParameters[key] !== 'boolean') {
-          optQueryParameters[key] = encodeURIComponent('"' + optQueryParameters[key] + '"');
-        }
-      }
-      parameters.push(key + "=" + optQueryParameters[key]);
-    }
-    url += parameters.join("&");
+
+    parameters.push(key + "=" + optQueryParameters[key]);
   }
-  else if (authToken !== "") {
-    url += "?auth=" + authToken;
-  }
+
+  // Add all parameters
+  url += "?"+ parameters.join("&");
+
+  // Add data in the request if there is some
   if (data || data == 0) params.payload = JSON.stringify(data);
+
+  // Change parameters for PATCH method
   if (method === "patch") {
     params.headers["X-HTTP-Method-Override"] = "PATCH";
     params.method = "post";
   }
+  
   // Exponential backoff is needed as server errors are more and more common on Firebase
   for (var n = 0; n < 6; n++) {
     var result = FirebaseApp_._sendRequest(url, params);
@@ -389,6 +408,15 @@ FirebaseApp_._buildRequest = function (method, base, path, data, optQueryParamet
   }
 };
 
+/**
+ * Send the request to Firebase
+ *
+ * @param url {String} url to call for in Firebase
+ * @param params {Object} parameters of the call
+ *
+ * @returns {*}
+ * @private
+ */
 FirebaseApp_._sendRequest = function (url, params) {
   // Added Try-catch as fetch method can fail even with muteHttpExceptions
   // Usually when it times out - ie: when Firebase is tacking too long to answer (more than 60s)
