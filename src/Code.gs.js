@@ -21,23 +21,25 @@ FirebaseApp_.base = function (base) {
   this.base = base;
 };
 
-var baseClass_ = FirebaseApp_.base.prototype;
-
+// noinspection JSUnusedGlobalSymbols
 /**
  * Retrieves a database by url
  *
  * @param  {string} url the database url
  * @param  {string} optSecret a Firebase app secret
- * @return {Database} the Database found at the given URL
+ * @return {FirebaseApp_.base} the Database found at the given URL
  */
 function getDatabaseByUrl(url, optSecret) {
   if (!optSecret) optSecret = '';
-  var base = new FirebaseApp_.base({
+  
+  return new FirebaseApp_.base({
     url: url,
     secret: optSecret
   });
-  return base;
 }
+
+
+var baseClass_ = FirebaseApp_.base.prototype;
 
 /**
  * Generates an authorization token to firebase
@@ -66,7 +68,6 @@ baseClass_.createAuthToken = function (userEmail, optAuthData, serviceAccountEma
   }
 };
 
-
 /**
  * Generates an authorization token to Firebase
  *
@@ -77,7 +78,7 @@ baseClass_.createAuthToken = function (userEmail, optAuthData, serviceAccountEma
 baseClass_.createAuthTokenFromServiceAccount_ = function (userEmail, optAuthData) {
   if (!("serviceAccountEmail" in this.base) || !("privateKey" in this.base)) {
     throw Error("You must provide both the serviceEmailAccount and the privateKey to generate a token")
-  };
+  }
   // Specific YAMM
   if (!optAuthData) {
     var tmp = userEmail.split('@');
@@ -89,7 +90,7 @@ baseClass_.createAuthTokenFromServiceAccount_ = function (userEmail, optAuthData
       emailAddress: userEmail
     }
   }
-
+  
   var header = JSON.stringify({
     "typ": "JWT",
     "alg": "RS256"
@@ -102,10 +103,10 @@ baseClass_.createAuthTokenFromServiceAccount_ = function (userEmail, optAuthData
     "aud": "https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit",
     "iat": now,
     "exp": now + 3600,
-    "uid": userEmail.replace(/[|&;$%@"<>()+,\.]/g, ""),
+    "uid": userEmail.replace(/[|&;$%@"<>()+,.]/g, ""),
     "claims": {}
   };
-
+  
   if (optAuthData) {
     Object.keys(optAuthData).forEach(function (item) {
       body.claims[item] = optAuthData[item];
@@ -144,7 +145,7 @@ baseClass_.createLegacyAuthToken_ = function (userEmail, optAuthData) {
   var payload = {
     "v": 0,
     "d": {
-      "uid": userEmail.replace(/[|&;$%@"<>()+,\.]/g, "")
+      "uid": userEmail.replace(/[|&;$%@"<>()+,.]/g, "")
     },
     // iat : 'issued at' in second
     "iat": Math.floor((new Date).getTime() / 1E3)
@@ -180,100 +181,6 @@ baseClass_.getData = function (path, optQueryParameters) {
 baseClass_.getAllData = function (requests) {
   var base = this.base;
   return FirebaseApp_._buildAllRequests(requests, base);
-};
-
-FirebaseApp_._keyWhiteList = {
-  auth: true,
-  shallow: true,
-  print: true,
-  limitToFirst: true,
-  limitToLast: true
-};
-
-/**
- * Pre-build all Urls
- * 
- * @param {Array.<string | {url: string, optQueryParameters: {}}>} requests
- * @param {Object} base information of the database
- * 
- * @return {*}
- * @private
- */
-FirebaseApp_._buildAllRequests = function (requests, base) {
-  var authToken = base.secret,
-      finalRequests = [],
-      url,
-      headers = {};
-
-  // Check if authentication done via OAuth 2 access token
-  if (authToken !== "" && authToken.indexOf('ya29.') != -1) {
-    headers["Authorization"] = "Bearer " + authToken;
-    authToken = "";
-  }
-
-  // Prepare all URLs requests
-  for (var i = 0; i < requests.length; i++){
-
-    // Transform string request in object
-    if(typeof requests[i] == "string"){
-      requests[i] = {
-        url: requests[i],
-        optQueryParameters: {}
-      };
-    }
-    else {
-      // Make sure that query parameters are init
-      requests[i].optQueryParameters = requests[i].optQueryParameters || {};
-    }
-
-    url = base.url + requests[i].url + ".json";
-
-    // Add authToken if needed
-    if (authToken !== "") {
-      requests[i].optQueryParameters["auth"] = authToken;
-    }
-    
-    // Build parameters before adding them in the url
-    var parameters = [];
-    for (var key in requests[i].optQueryParameters) {
-      
-      // Encode non boolean parameters (except whitelisted keys)
-      if (!FirebaseApp_._keyWhiteList[key] && isNaN(requests[i].optQueryParameters[key]) && typeof requests[i].optQueryParameters[key] !== 'boolean') {
-        requests[i].optQueryParameters[key] = encodeURIComponent('"' + requests[i].optQueryParameters[key] + '"');
-      }
-      
-      parameters.push(key + "=" + requests[i].optQueryParameters[key]);
-    }
-    
-    // Add all parameters
-    url += "?"+ parameters.join("&");
-
-    // Store request
-    finalRequests.push({url: url, headers: headers, muteHttpExceptions: true});
-  }
-
-  return FirebaseApp_._sendAllRequests(finalRequests, requests);
-};
-
-/**
- * Send all request using UrlFetchApp.fetchAll()
- * 
- * @param {Object.<{url: string, headers: {}, muteHttpExceptions: boolean}>} finalRequests
- * @param {Object<{url: string, optQueryParameters: {}}>} originalsRequests location of each data
- *
- * @return {*}
- * @private
- */
-FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests) {
-    var dataArray = UrlFetchApp.fetchAll(finalRequests),
-      data = {};
-
-    // Store each response in an object with the respective Firebase path as key
-    for (var i = 0; i < dataArray.length; i++){
-        data[originalsRequests[i].url] = JSON.parse(dataArray[i]);
-    }
-  
-  return data;
 };
 
 /**
@@ -323,6 +230,7 @@ baseClass_.removeData = function (path, optQueryParameters) {
   return FirebaseApp_._buildRequest("delete", this.base, path, null, optQueryParameters);
 };
 
+
 /**
  * Pre-build the request
  *
@@ -333,72 +241,73 @@ baseClass_.removeData = function (path, optQueryParameters) {
  * @param optQueryParameters {Object} optional query parameter for the call
  *
  * @return {*}
- * @private
  */
 FirebaseApp_._buildRequest = function (method, base, path, data, optQueryParameters) {
-  if (optQueryParameters && typeof optQueryParameters != "object") {
+  if (optQueryParameters && typeof optQueryParameters !== "object") {
     throw new Error("optQueryParameters must be an object");
   }
-
+  
   if (!path) path = '';
-
+  
   var params = {
-    method: method,
-    headers: {},
-    muteHttpExceptions: true
-  },
+        method: method,
+        headers: {},
+        muteHttpExceptions: true
+      },
       url = base.url + path + ".json",
       authToken = base.secret;
-
+  
   // Check if authentication done via OAuth 2 access token
-  if (authToken !== "" && authToken.indexOf('ya29.') != -1) {
+  if (authToken !== "" && authToken.indexOf('ya29.') !== -1) {
     params.headers["Authorization"] = "Bearer " + authToken;
     authToken = "";
   }
-
+  
   // Init query parameters
   optQueryParameters = optQueryParameters || {};
-
+  
   // Add authToken if needed
   if(authToken !== "") optQueryParameters["auth"] = authToken;
-
+  
   // Build parameters before adding them in the url
   var parameters = [];
   for (var key in optQueryParameters) {
-
+    
     // Encode non boolean parameters (except whitelisted keys)
     if (!FirebaseApp_._keyWhiteList[key] && isNaN(optQueryParameters[key]) && typeof optQueryParameters[key] !== 'boolean') {
       optQueryParameters[key] = encodeURIComponent('"' + optQueryParameters[key] + '"');
     }
-
+    
     parameters.push(key + "=" + optQueryParameters[key]);
   }
-
+  
   // Add all parameters
   url += "?"+ parameters.join("&");
-
+  
   // Add data in the request if there is some
-  if (data || data == 0) params.payload = JSON.stringify(data);
-
+  if (data || data === 0) params.payload = JSON.stringify(data);
+  
   // Change parameters for PATCH method
   if (method === "patch") {
     params.headers["X-HTTP-Method-Override"] = "PATCH";
     params.method = "post";
   }
   
-  // Exponential backoff is needed as server errors are more and more common on Firebase
+  // Exponential back-off is needed as server errors are more and more common on Firebase
   for (var n = 0; n < 6; n++) {
     var result = FirebaseApp_._sendRequest(url, params);
+    
     if (!result) return;
     else if (!(result instanceof Error)) break;
     else {
-      if (n == 5) {
-        throw result;
-      }
+      if (n === 5) throw result;
+      
       Utilities.sleep((Math.pow(2, n) * 1000) + (Math.round(Math.random() * 1000)));
     }
   }
-  if (method == "post" && JSON.parse(result)['name']) return JSON.parse(result)['name'];
+  
+  if (method === "post" && JSON.parse(result)['name']) return JSON.parse(result)['name'];
+  
   // Sometimes JSON.parse() fails with "Unexpected token: <"
   try {
     return JSON.parse(result);
@@ -426,19 +335,117 @@ FirebaseApp_._sendRequest = function (url, params) {
   catch (e) {
     // in case of timeout, if we are writing data, assume firebase will eventually write
     // ie don't throw error and continue to work
-    if (params.method == "post" || params.method == "put" || params.method == "delete") return;
+    if (params.method === "post" || params.method === "put" || params.method === "delete") return;
     else return new Error("We're sorry, a server error occurred. Please wait a bit and try again.");
   }
+  
   var responseCode = result.getResponseCode();
+  
   // print=silent returns a 204 No Content on success
-  if (responseCode == 204) return;
+  if (responseCode === 204) return;
+  
   // Avoid returning the Firebase app secret in case of error
-  if (result.toString().indexOf('auth=') != -1) {
+  if (result.toString().indexOf('auth=') !== -1) {
     return new Error("We're sorry, a server error occurred. Please wait a bit and try again.");
   }
-  if (responseCode == 400 || responseCode == 401 || responseCode == 500 || responseCode == 502) {
-    if (result.toString().indexOf('error') != -1) return new Error(JSON.parse(result).error);
+  
+  if (responseCode === 400 || responseCode === 401 || responseCode === 500 || responseCode === 502) {
+    if (result.toString().indexOf('error') !== -1) return new Error(JSON.parse(result).error);
     else return new Error("We're sorry, a server error occurred. Please wait a bit and try again.");
   }
+  
   return result;
+};
+
+FirebaseApp_._keyWhiteList = {
+  auth: true,
+  shallow: true,
+  print: true,
+  limitToFirst: true,
+  limitToLast: true
+};
+
+/**
+ * Pre-build all Urls
+ *
+ * @param {Array.<string | {url: string, optQueryParameters: {}}>} requests
+ * @param {Object} base information of the database
+ *
+ * @return {*}
+ */
+FirebaseApp_._buildAllRequests = function (requests, base) {
+  var authToken = base.secret,
+      finalRequests = [],
+      url,
+      headers = {};
+  
+  // Check if authentication done via OAuth 2 access token
+  if (authToken !== "" && authToken.indexOf('ya29.') !== -1) {
+    headers["Authorization"] = "Bearer " + authToken;
+    authToken = "";
+  }
+  
+  // Prepare all URLs requests
+  for (var i = 0; i < requests.length; i++){
+    
+    // Transform string request in object
+    if (typeof requests[i] === "string"){
+      requests[i] = {
+        url: requests[i],
+        optQueryParameters: {}
+      };
+    }
+    else {
+      // Make sure that query parameters are init
+      requests[i].optQueryParameters = requests[i].optQueryParameters || {};
+    }
+    
+    url = base.url + requests[i].url + ".json";
+    
+    // Add authToken if needed
+    if (authToken !== "") {
+      requests[i].optQueryParameters["auth"] = authToken;
+    }
+    
+    // Build parameters before adding them in the url
+    var parameters = [];
+    for (var key in requests[i].optQueryParameters) {
+      
+      // Encode non boolean parameters (except whitelisted keys)
+      if (!FirebaseApp_._keyWhiteList[key] && isNaN(requests[i].optQueryParameters[key]) && typeof requests[i].optQueryParameters[key] !== 'boolean') {
+        requests[i].optQueryParameters[key] = encodeURIComponent('"' + requests[i].optQueryParameters[key] + '"');
+      }
+      
+      parameters.push(key + "=" + requests[i].optQueryParameters[key]);
+    }
+    
+    // Add all parameters
+    url += "?"+ parameters.join("&");
+    
+    // Store request
+    finalRequests.push({url: url, headers: headers, muteHttpExceptions: true});
+  }
+  
+  return FirebaseApp_._sendAllRequests(finalRequests, requests);
+};
+
+/**
+ * Send all request using UrlFetchApp.fetchAll()
+ *
+ * @param {Object.<{url: string, headers: {}, muteHttpExceptions: boolean}>} finalRequests
+ * @param {Object<{url: string, optQueryParameters: {}}>} originalsRequests location of each data
+ *
+ * @return {*}
+ * @private
+ */
+FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests) {
+  var dataArray = UrlFetchApp.fetchAll(finalRequests),
+      data = {};
+  
+  // Store each response in an object with the respective Firebase path as key
+  for (var i = 0; i < dataArray.length; i++){
+    data[originalsRequests[i].url] = JSON.parse(dataArray[i]);
+  }
+  
+  return data;
 };
