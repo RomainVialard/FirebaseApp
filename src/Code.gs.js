@@ -246,7 +246,8 @@ FirebaseApp_._buildRequest = function (method, base, path, data, optQueryParamet
     var parameters = [];
     for (var key in optQueryParameters) {
       if (key != "auth" && key != "shallow" && key != "print" && key != "limitToFirst" && key != "limitToLast") {
-        if (isNaN(optQueryParameters[key]) && typeof optQueryParameters[key] !== 'boolean') {
+        // Fix issue where isNaN will convert a string to a number
+        if (typeof optQueryParameters[key] === 'string') {
           optQueryParameters[key] = encodeURIComponent('"' + optQueryParameters[key] + '"');
         }
       }
