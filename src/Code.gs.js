@@ -17,7 +17,15 @@ limitations under the License.
 */
 var FirebaseApp_ = {};
 
-FirebaseApp_.base = function (base) {
+FirebaseApp_.Base = function (base) {
+  /**
+   * @type {{
+   *   url: string
+   *   [secret]: string
+   *   [serviceAccountEmail]: string
+   *   [privateKey]: string
+   * }}
+   */
   this.base = base;
 };
 
@@ -25,21 +33,20 @@ FirebaseApp_.base = function (base) {
 /**
  * Retrieves a database by url
  *
- * @param  {string} url the database url
- * @param  {string} optSecret a Firebase app secret
- * @return {FirebaseApp_.base} the Database found at the given URL
+ * @param  {string} url - the database url
+ * @param  {string} [optSecret] - a Firebase app secret
+ * 
+ * @return {FirebaseApp_.Base} the Database found at the given URL
  */
 function getDatabaseByUrl(url, optSecret) {
-  if (!optSecret) optSecret = '';
-  
-  return new FirebaseApp_.base({
+  return new FirebaseApp_.Base({
     url: url,
-    secret: optSecret
+    secret: optSecret || ''
   });
 }
 
 
-var baseClass_ = FirebaseApp_.base.prototype;
+var baseClass_ = FirebaseApp_.Base.prototype;
 
 /**
  * Generates an authorization token to firebase
@@ -161,11 +168,23 @@ baseClass_.createLegacyAuthToken_ = function (userEmail, optAuthData) {
   return header + "." + payload + "." + Utilities.base64EncodeWebSafe(hmac);
 };
 
+
+/**
+ * @typedef {{
+ *   [auth]: string
+ *   [shallow]: string
+ *   [print]: string
+ *   [limitToFirst]: string
+ *   [limitToLast]: string
+ * }} optQueryParameters
+ */
+
 /**
  * Returns the data at this path
  *
- * @param  {string} path the path where the data is stored
- * @param  {object} optQueryParameters a set of query parameters
+ * @param  {string} path - the path where the data is stored
+ * @param  {optQueryParameters} [optQueryParameters] - a set of query parameters
+ * 
  * @return {object} the data found at the given path
  */
 baseClass_.getData = function (path, optQueryParameters) {
@@ -175,20 +194,21 @@ baseClass_.getData = function (path, optQueryParameters) {
 /**
  * Returns data in all specified paths
  *
- * @param  {Array} requests array of requests
+ * @param  {Array.<string | {url: string, [optQueryParameters]: optQueryParameters}>} requests - array of requests
+ * 
  * @return {object} responses to each requests
  */
 baseClass_.getAllData = function (requests) {
-  var base = this.base;
-  return FirebaseApp_._buildAllRequests(requests, base);
+  return FirebaseApp_._buildAllRequests(requests, this);
 };
 
 /**
  * Generates a new child location using a unique key
  *
- * @param  {string} path the path where to create a new child
- * @param  {object} data the data to be written at the generated location
- * @param  {object} optQueryParameters a set of query parameters
+ * @param  {string} path - the path where to create a new child
+ * @param  {object} data - the data to be written at the generated location
+ * @param  {optQueryParameters} [optQueryParameters] - a set of query parameters
+ * 
  * @return {string} the child name of the new data that was added
  */
 baseClass_.pushData = function (path, data, optQueryParameters) {
@@ -198,9 +218,10 @@ baseClass_.pushData = function (path, data, optQueryParameters) {
 /**
  * Write data at the specified path
  *
- * @param  {string} path the path where to write data
- * @param  {object} data the data to be written at the specified path
- * @param  {object} optQueryParameters a set of query parameters
+ * @param  {string} path - the path where to write data
+ * @param  {object} data - the data to be written at the specified path
+ * @param  {optQueryParameters} [optQueryParameters] - a set of query parameters
+ * 
  * @return {object} the data written
  */
 baseClass_.setData = function (path, data, optQueryParameters) {
@@ -210,9 +231,10 @@ baseClass_.setData = function (path, data, optQueryParameters) {
 /**
  * Update specific children at the specified path without overwriting existing data
  *
- * @param  {string} path the path where to update data
- * @param  {object} data the children to overwrite
- * @param  {object} [optQueryParameters] a set of query parameters
+ * @param  {string} path - the path where to update data
+ * @param  {object} data - the children to overwrite
+ * @param  {optQueryParameters} [optQueryParameters] a - set of query parameters
+ * 
  * @return {object} the data written
  */
 baseClass_.updateData = function (path, data, optQueryParameters) {
@@ -222,8 +244,8 @@ baseClass_.updateData = function (path, data, optQueryParameters) {
 /**
  * Delete data at the specified path
  *
- * @param  {string} path the path where to delete data
- * @param  {object} optQueryParameters a set of query parameters
+ * @param  {string} path - the path where to delete data
+ * @param  {optQueryParameters} [optQueryParameters] - a set of query parameters
  * @return {null}
  */
 baseClass_.removeData = function (path, optQueryParameters) {
@@ -236,7 +258,7 @@ baseClass_.removeData = function (path, optQueryParameters) {
  *
  * @param method {String} the type of the request made to Firebase
  * @param base {Object} base information of Firebase
- * @param path {String} path to the whished location of Firebase
+ * @param path {String} path to the wished location of Firebase
  * @param data {*} data to insert in the location
  * @param optQueryParameters {Object} optional query parameter for the call
  *
@@ -267,7 +289,7 @@ FirebaseApp_._buildRequest = function (method, base, path, data, optQueryParamet
   optQueryParameters = optQueryParameters || {};
   
   // Add authToken if needed
-  if(authToken !== "") optQueryParameters["auth"] = authToken;
+  if (authToken !== "") optQueryParameters["auth"] = authToken;
   
   // Build parameters before adding them in the url
   var parameters = [];
@@ -368,43 +390,46 @@ FirebaseApp_._keyWhiteList = {
 /**
  * Pre-build all Urls
  *
- * @param {Array.<string | {url: string, optQueryParameters: {}}>} requests
- * @param {Object} base information of the database
+ * @param {Array.<string | {
+ *   path: string
+ *   [method]: 'get' | 'post' | 'put' | 'patch' | 'delete'
+ *   [data]: *
+ *   optQueryParameters: optQueryParameters
+ * }>} requests
+ * @param {FirebaseApp_.Base} db information of the database
  *
  * @return {*}
  */
-FirebaseApp_._buildAllRequests = function (requests, base) {
-  var authToken = base.secret,
+FirebaseApp_._buildAllRequests = function (requests, db) {
+  var authToken = db.base.secret,
       finalRequests = [],
       url,
       headers = {};
   
   // Check if authentication done via OAuth 2 access token
-  if (authToken !== "" && authToken.indexOf('ya29.') !== -1) {
-    headers["Authorization"] = "Bearer " + authToken;
-    authToken = "";
+  if (authToken && authToken.indexOf('ya29.') !== -1) {
+    headers['Authorization'] = 'Bearer ' + authToken;
+    authToken = '';
   }
   
   // Prepare all URLs requests
   for (var i = 0; i < requests.length; i++){
     
     // Transform string request in object
-    if (typeof requests[i] === "string"){
+    if (typeof requests[i] === 'string'){
       requests[i] = {
-        url: requests[i],
+        path: requests[i],
         optQueryParameters: {}
       };
     }
     else {
-      // Make sure that query parameters are init
+      // Make sure that query parameters are initialized
       requests[i].optQueryParameters = requests[i].optQueryParameters || {};
     }
     
-    url = base.url + requests[i].url + ".json";
-    
     // Add authToken if needed
-    if (authToken !== "") {
-      requests[i].optQueryParameters["auth"] = authToken;
+    if (authToken) {
+      requests[i].optQueryParameters['auth'] = authToken;
     }
     
     // Build parameters before adding them in the url
@@ -413,14 +438,14 @@ FirebaseApp_._buildAllRequests = function (requests, base) {
       
       // Encode non boolean parameters (except whitelisted keys)
       if (!FirebaseApp_._keyWhiteList[key] && isNaN(requests[i].optQueryParameters[key]) && typeof requests[i].optQueryParameters[key] !== 'boolean') {
-        requests[i].optQueryParameters[key] = encodeURIComponent('"' + requests[i].optQueryParameters[key] + '"');
+        requests[i].optQueryParameters[key] = encodeURIComponent('"'+ requests[i].optQueryParameters[key] +'"');
       }
       
-      parameters.push(key + "=" + requests[i].optQueryParameters[key]);
+      parameters.push(key +'='+ requests[i].optQueryParameters[key]);
     }
     
-    // Add all parameters
-    url += "?"+ parameters.join("&");
+    // Build request URL
+    url = db.base.url + requests[i].path + '.json'+ (parameters.length ? parameters.join('&') : '');
     
     // Store request
     finalRequests.push({url: url, headers: headers, muteHttpExceptions: true});
@@ -444,7 +469,7 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests) {
   
   // Store each response in an object with the respective Firebase path as key
   for (var i = 0; i < dataArray.length; i++){
-    data[originalsRequests[i].url] = JSON.parse(dataArray[i]);
+    data[originalsRequests[i].path] = JSON.parse(dataArray[i]);
   }
   
   return data;
