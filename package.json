@@ -8,6 +8,6 @@
 		"url": "https://github.com/RomainVialard/FirebaseApp.git"
 	},
 	"devDependencies": {
-		"gas-lib": "^1.1.0"
+		"gas-lib": "^1.2.0"
 	}
 }
