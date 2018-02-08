@@ -399,7 +399,7 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
     for (var key in requests[i].optQueryParameters) {
       
       // Encode non boolean parameters (except whitelisted keys)
-      if (!FirebaseApp_._keyWhiteList[key] && isNaN(requests[i].optQueryParameters[key]) && typeof requests[i].optQueryParameters[key] !== 'boolean') {
+      if (!FirebaseApp_._keyWhiteList[key] && typeof requests[i].optQueryParameters[key] === 'string') {
         requests[i].optQueryParameters[key] = encodeURIComponent('"'+ requests[i].optQueryParameters[key] +'"');
       }
       
