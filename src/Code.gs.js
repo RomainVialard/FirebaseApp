@@ -188,13 +188,22 @@ baseClass_.createLegacyAuthToken_ = function (userEmail, optAuthData) {
  * @return {object} the data found at the given path
  */
 baseClass_.getData = function (path, optQueryParameters) {
-  return FirebaseApp_._buildRequest("get", this.base, path, null, optQueryParameters);
+  var req = {
+    method: 'get',
+    path: path,
+    optQueryParameters: optQueryParameters
+  };
+  
+  // Send request
+  FirebaseApp_._buildAllRequests([req], this);
+  
+  return 'response' in req ? req.response : req.error;
 };
 
 /**
  * Returns data in all specified paths
  *
- * @param  {Array.<string | {url: string, [optQueryParameters]: optQueryParameters}>} requests - array of requests
+ * @param  {Array.<string | FirebaseApp_.request>} requests - array of requests
  *
  * @return {object} responses to each requests
  */
@@ -212,7 +221,17 @@ baseClass_.getAllData = function (requests) {
  * @return {string} the child name of the new data that was added
  */
 baseClass_.pushData = function (path, data, optQueryParameters) {
-  return FirebaseApp_._buildRequest("post", this.base, path, data, optQueryParameters);
+  var req = {
+    method: 'post',
+    path: path,
+    data: data,
+    optQueryParameters: optQueryParameters
+  };
+  
+  // Send request
+  FirebaseApp_._buildAllRequests([req], this);
+  
+  return 'response' in req ? req.response : req.error;
 };
 
 /**
@@ -225,7 +244,17 @@ baseClass_.pushData = function (path, data, optQueryParameters) {
  * @return {object} the data written
  */
 baseClass_.setData = function (path, data, optQueryParameters) {
-  return FirebaseApp_._buildRequest("put", this.base, path, data, optQueryParameters);
+  var req = {
+    method: 'put',
+    path: path,
+    data: data,
+    optQueryParameters: optQueryParameters
+  };
+  
+  // Send request
+  FirebaseApp_._buildAllRequests([req], this);
+  
+  return 'response' in req ? req.response : req.error;
 };
 
 /**
@@ -238,7 +267,17 @@ baseClass_.setData = function (path, data, optQueryParameters) {
  * @return {object} the data written
  */
 baseClass_.updateData = function (path, data, optQueryParameters) {
-  return FirebaseApp_._buildRequest("patch", this.base, path, data, optQueryParameters);
+  var req = {
+    method: 'patch',
+    path: path,
+    data: data,
+    optQueryParameters: optQueryParameters
+  };
+  
+  // Send request
+  FirebaseApp_._buildAllRequests([req], this);
+  
+  return 'response' in req ? req.response : req.error;
 };
 
 /**
@@ -249,135 +288,16 @@ baseClass_.updateData = function (path, data, optQueryParameters) {
  * @return {null}
  */
 baseClass_.removeData = function (path, optQueryParameters) {
-  return FirebaseApp_._buildRequest("delete", this.base, path, null, optQueryParameters);
-};
-
-
-/**
- * Pre-build the request
- *
- * @param method {String} the type of the request made to Firebase
- * @param base {Object} base information of Firebase
- * @param path {String} path to the wished location of Firebase
- * @param data {*} data to insert in the location
- * @param optQueryParameters {Object} optional query parameter for the call
- *
- * @return {*}
- */
-FirebaseApp_._buildRequest = function (method, base, path, data, optQueryParameters) {
-  if (optQueryParameters && typeof optQueryParameters !== "object") {
-    throw new Error("optQueryParameters must be an object");
-  }
+  var req = {
+    method: 'delete',
+    path: path,
+    optQueryParameters: optQueryParameters
+  };
   
-  if (!path) path = '';
+  // Send request
+  FirebaseApp_._buildAllRequests([req], this);
   
-  var params = {
-        method: method,
-        headers: {},
-        muteHttpExceptions: true
-      },
-      url = base.url + path + ".json",
-      authToken = base.secret;
-  
-  // Check if authentication done via OAuth 2 access token
-  if (authToken !== "" && authToken.indexOf('ya29.') !== -1) {
-    params.headers["Authorization"] = "Bearer " + authToken;
-    authToken = "";
-  }
-  
-  // Init query parameters
-  optQueryParameters = optQueryParameters || {};
-  
-  // Add authToken if needed
-  if (authToken !== "") optQueryParameters["auth"] = authToken;
-  
-  // Build parameters before adding them in the url
-  var parameters = [];
-  for (var key in optQueryParameters) {
-    
-    // Encode non boolean parameters (except whitelisted keys)
-    if (!FirebaseApp_._keyWhiteList[key] && isNaN(optQueryParameters[key]) && typeof optQueryParameters[key] !== 'boolean') {
-      optQueryParameters[key] = encodeURIComponent('"' + optQueryParameters[key] + '"');
-    }
-    
-    parameters.push(key + "=" + optQueryParameters[key]);
-  }
-  
-  // Add all parameters
-  url += "?"+ parameters.join("&");
-  
-  // Add data in the request if there is some
-  if (data || data === 0) params.payload = JSON.stringify(data);
-  
-  // Change parameters for PATCH method
-  if (method === "patch") {
-    params.headers["X-HTTP-Method-Override"] = "PATCH";
-    params.method = "post";
-  }
-  
-  // Exponential back-off is needed as server errors are more and more common on Firebase
-  for (var n = 0; n < 6; n++) {
-    var result = FirebaseApp_._sendRequest(url, params);
-    
-    if (!result) return;
-    else if (!(result instanceof Error)) break;
-    else {
-      if (n === 5) throw result;
-      
-      Utilities.sleep((Math.pow(2, n) * 1000) + (Math.round(Math.random() * 1000)));
-    }
-  }
-  
-  
-  if (method === "post" && JSON.parse(result)['name']) return JSON.parse(result)['name'];
-  
-  // Sometimes JSON.parse() fails with "Unexpected token: <" -> because the content returned is an HTML error screen
-  try {
-    return JSON.parse(result);
-  }
-  catch (e) {
-    throw new Error(result);
-  }
-};
-
-/**
- * Send the request to Firebase
- *
- * @param url {String} url to call for in Firebase
- * @param params {Object} parameters of the call
- *
- * @returns {*}
- * @private
- */
-FirebaseApp_._sendRequest = function (url, params) {
-  // Added Try-catch as fetch method can fail even with muteHttpExceptions
-  // Usually when it times out - ie: when Firebase is tacking too long to answer (more than 60s)
-  try {
-    var result = UrlFetchApp.fetch(url, params);
-  }
-  catch (e) {
-    // in case of timeout, if we are writing data, assume firebase will eventually write
-    // ie don't throw error and continue to work
-    if (params.method === "post" || params.method === "put" || params.method === "delete") return;
-    else return new Error("We're sorry, a server error occurred. Please wait a bit and try again.");
-  }
-  
-  var responseCode = result.getResponseCode();
-  
-  // print=silent returns a 204 No Content on success
-  if (responseCode === 204) return;
-  
-  // Avoid returning the Firebase app secret in case of error
-  if (result.toString().indexOf('auth=') !== -1) {
-    return new Error("We're sorry, a server error occurred. Please wait a bit and try again.");
-  }
-  
-  if (responseCode === 400 || responseCode === 401 || responseCode === 500 || responseCode === 502) {
-    if (result.toString().indexOf('error') !== -1) return new Error(JSON.parse(result.getContentText()).error);
-    else return new Error("We're sorry, a server error occurred. Please wait a bit and try again.");
-  }
-  
-  return result;
+  return 'response' in req ? req.response : req.error;
 };
 
 
