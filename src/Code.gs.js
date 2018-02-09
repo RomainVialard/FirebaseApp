@@ -528,7 +528,7 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
     if (FirebaseApp_._errorCodeList[responseCode] || errorMessage) {
       errorCount += 1;
       
-      originalsRequests[i].error = new Error(responseParsed.error || FirebaseApp_._ERROR_TRY_AGAIN);
+      originalsRequests[i].error = new Error(errorMessage || (responseParsed && responseParsed.error) || FirebaseApp_._ERROR_TRY_AGAIN);
       
       retry.finalReq.push(finalRequests[i]);
       retry.originalReq.push(originalsRequests[i]);
@@ -541,7 +541,7 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
       
       // For POST request, the result is a JSON {"name": "$newKey"} and we want to return the $newKey
       if (finalRequests[i].method === 'post' && finalRequests[i].headers['X-HTTP-Method-Override'] !== 'PATCH'){
-        originalsRequests[i].response = responseParsed['name'];
+        originalsRequests[i].response = responseParsed && responseParsed['name'] || '';
       }
       else{
         originalsRequests[i].response = responseParsed;
