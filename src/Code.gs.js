@@ -407,7 +407,7 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
     }
     
     // Build request URL
-    requestParam.url = db.base.url + requests[i].path + '.json'+ (parameters.length ? parameters.join('&') : '');
+    requestParam.url = db.base.url + requests[i].path + '.json'+ (parameters.length ? '?'+ parameters.join('&') : '');
     
     // Store request
     finalRequests.push(requestParam);
