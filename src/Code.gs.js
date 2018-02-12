@@ -188,16 +188,14 @@ baseClass_.createLegacyAuthToken_ = function (userEmail, optAuthData) {
  * @return {object} the data found at the given path
  */
 baseClass_.getData = function (path, optQueryParameters) {
-  var req = {
+  // Send request
+  var res = FirebaseApp_._buildAllRequests([{
     method: 'get',
     path: path,
     optQueryParameters: optQueryParameters
-  };
+  }], this);
   
-  // Send request
-  FirebaseApp_._buildAllRequests([req], this);
-  
-  return 'response' in req ? req.response : req.error;
+  return res[0];
 };
 
 /**
@@ -221,17 +219,15 @@ baseClass_.getAllData = function (requests) {
  * @return {string} the child name of the new data that was added
  */
 baseClass_.pushData = function (path, data, optQueryParameters) {
-  var req = {
+  // Send request
+  var res = FirebaseApp_._buildAllRequests([{
     method: 'post',
     path: path,
     data: data,
     optQueryParameters: optQueryParameters
-  };
+  }], this);
   
-  // Send request
-  FirebaseApp_._buildAllRequests([req], this);
-  
-  return 'response' in req ? req.response : req.error;
+  return res[0];
 };
 
 /**
@@ -244,17 +240,15 @@ baseClass_.pushData = function (path, data, optQueryParameters) {
  * @return {object} the data written
  */
 baseClass_.setData = function (path, data, optQueryParameters) {
-  var req = {
+  // Send request
+  var res = FirebaseApp_._buildAllRequests([{
     method: 'put',
     path: path,
     data: data,
     optQueryParameters: optQueryParameters
-  };
+  }], this);
   
-  // Send request
-  FirebaseApp_._buildAllRequests([req], this);
-  
-  return 'response' in req ? req.response : req.error;
+  return res[0];
 };
 
 /**
@@ -267,17 +261,15 @@ baseClass_.setData = function (path, data, optQueryParameters) {
  * @return {object} the data written
  */
 baseClass_.updateData = function (path, data, optQueryParameters) {
-  var req = {
+  // Send request
+  var res = FirebaseApp_._buildAllRequests([{
     method: 'patch',
     path: path,
     data: data,
     optQueryParameters: optQueryParameters
-  };
+  }], this);
   
-  // Send request
-  FirebaseApp_._buildAllRequests([req], this);
-  
-  return 'response' in req ? req.response : req.error;
+  return res[0];
 };
 
 /**
@@ -288,16 +280,14 @@ baseClass_.updateData = function (path, data, optQueryParameters) {
  * @return {null}
  */
 baseClass_.removeData = function (path, optQueryParameters) {
-  var req = {
+  // Send request
+  var res = FirebaseApp_._buildAllRequests([{
     method: 'delete',
     path: path,
     optQueryParameters: optQueryParameters
-  };
+  }], this);
   
-  // Send request
-  FirebaseApp_._buildAllRequests([req], this);
-  
-  return 'response' in req ? req.response : req.error;
+  return res[0];
 };
 
 
@@ -341,7 +331,7 @@ FirebaseApp_._ERROR_GLOBAL_CRASH = 'We\'re sorry, a server error occurred. Pleas
  * @param {Array.<string | FirebaseApp_.request>} requests
  * @param {FirebaseApp_.Base} db information of the database
  *
- * @return {*}
+ * @return {Array.<Object | *>}
  */
 FirebaseApp_._buildAllRequests = function (requests, db) {
   var authToken = db.base.secret,
@@ -416,13 +406,14 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
   
   // Get request results
   FirebaseApp_._sendAllRequests(finalRequests, requests, db);
-  var data = {};
+  var data = [];
   
   // Store each response in an object with the respective Firebase path as key
   for (var j = 0; j < requests.length; j++){
-    data[requests[j].path] = 'response' in requests[j]
+    data.push('response' in requests[j]
       ? requests[j].response
-      : requests[j].error;
+      : requests[j].error
+    )
   }
   
   return data;
