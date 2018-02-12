@@ -45,6 +45,11 @@ function getDatabaseByUrl(url, optSecret) {
   });
 }
 
+// noinspection JSUnusedGlobalSymbols, ThisExpressionReferencesGlobalObjectJS
+this['FirebaseApp'] = {
+  // Add local alias to run the library as normal code
+  getDatabaseByUrl: getDatabaseByUrl
+};
 
 var baseClass_ = FirebaseApp_.Base.prototype;
 
