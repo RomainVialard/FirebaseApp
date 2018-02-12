@@ -314,8 +314,8 @@ FirebaseApp_._methodWhiteList = {
   'put': true,
   'delete': true
 };
-FirebaseApp_._ERROR_TRY_AGAIN = 'We\'re sorry, a server error occurred. Please wait a bit and try again.';
-FirebaseApp_._ERROR_GLOBAL_CRASH = 'We\'re sorry, a server error occurred. Please wait a bit and try again.';
+FirebaseApp_._ERROR_TRY_AGAIN = "We're sorry, a server error occurred. Please wait a bit and try again.";
+FirebaseApp_._ERROR_GLOBAL_CRASH = "We're sorry, a server error occurred. Please wait a bit and try again.";
 
 /**
  * @typedef {{
@@ -343,6 +343,10 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
       finalRequests = [],
       headers = {};
   
+  // Deep copy of object to avoid changing it
+  /** @type {Array.<string | FirebaseApp_.request>} */
+  var initialReq = JSON.parse(JSON.stringify(requests));
+  
   // Check if authentication done via OAuth 2 access token
   if (authToken && authToken.indexOf('ya29.') !== -1) {
     headers['Authorization'] = 'Bearer ' + authToken;
@@ -350,19 +354,19 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
   }
   
   // Prepare all URLs requests
-  for (var i = 0; i < requests.length; i++){
+  for (var i = 0; i < initialReq.length; i++){
     
     // Transform string request in object
-    if (typeof requests[i] === 'string'){
-      requests[i] = {
+    if (typeof initialReq[i] === 'string'){
+      initialReq[i] = {
         optQueryParameters: {},
-        path: requests[i]
+        path: initialReq[i]
       };
     }
     else {
       // Make sure that query parameters are initialized
-      requests[i].optQueryParameters = requests[i].optQueryParameters || {};
-      requests[i].path = requests[i].path || '';
+      initialReq[i].optQueryParameters = initialReq[i].optQueryParameters || {};
+      initialReq[i].path = initialReq[i].path || '';
     }
     
     // Init request object
@@ -370,11 +374,11 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
       muteHttpExceptions: true,
       headers: {},
       url: '',
-      method: requests[i].method || 'get'
+      method: initialReq[i].method || 'get'
     };
     
     // Add data if any
-    'data' in requests[i] && (requestParam.payload = JSON.stringify(requests[i].data));
+    'data' in initialReq[i] && (requestParam.payload = JSON.stringify(initialReq[i].data));
     
     // Add Authorization header if necessary
     headers['Authorization'] && (requestParam.headers['Authorization'] = headers['Authorization']);
@@ -386,23 +390,23 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
     }
     
     // Add authToken if needed
-    authToken && (requests[i].optQueryParameters['auth'] = authToken);
+    authToken && (initialReq[i].optQueryParameters['auth'] = authToken);
     
     
     // Build parameters before adding them in the url
     var parameters = [];
-    for (var key in requests[i].optQueryParameters) {
+    for (var key in initialReq[i].optQueryParameters) {
       
       // Encode non boolean parameters (except whitelisted keys)
-      if (!FirebaseApp_._keyWhiteList[key] && typeof requests[i].optQueryParameters[key] === 'string') {
-        requests[i].optQueryParameters[key] = encodeURIComponent('"'+ requests[i].optQueryParameters[key] +'"');
+      if (!FirebaseApp_._keyWhiteList[key] && typeof initialReq[i].optQueryParameters[key] === 'string') {
+        initialReq[i].optQueryParameters[key] = encodeURIComponent('"'+ initialReq[i].optQueryParameters[key] +'"');
       }
       
-      parameters.push(key +'='+ requests[i].optQueryParameters[key]);
+      parameters.push(key +'='+ initialReq[i].optQueryParameters[key]);
     }
     
     // Build request URL
-    requestParam.url = db.base.url + requests[i].path + '.json'+ (parameters.length ? '?'+ parameters.join('&') : '');
+    requestParam.url = db.base.url + initialReq[i].path + '.json'+ (parameters.length ? '?'+ parameters.join('&') : '');
     
     // Store request
     finalRequests.push(requestParam);
@@ -410,14 +414,14 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
   
   
   // Get request results
-  FirebaseApp_._sendAllRequests(finalRequests, requests, db);
+  FirebaseApp_._sendAllRequests(finalRequests, initialReq, db);
   var data = [];
   
   // Store each response in an object with the respective Firebase path as key
-  for (var j = 0; j < requests.length; j++){
-    data.push('response' in requests[j]
-      ? requests[j].response
-      : requests[j].error
+  for (var j = 0; j < initialReq.length; j++){
+    data.push('response' in initialReq[j]
+      ? initialReq[j].response
+      : initialReq[j].error
     )
   }
   
