@@ -13,3 +13,5 @@ ehthumbs.db
 
 **/npm-debug.log
 /node_modules
+
+.clasp.json
