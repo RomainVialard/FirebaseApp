@@ -345,7 +345,7 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
   
   // Deep copy of object to avoid changing it
   /** @type {Array.<string | FirebaseApp_.request>} */
-  var initialReq = JSON.parse(JSON.stringify(requests));
+  var initialRequests = JSON.parse(JSON.stringify(requests));
   
   // Check if authentication done via OAuth 2 access token
   if (authToken && authToken.indexOf('ya29.') !== -1) {
@@ -354,19 +354,19 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
   }
   
   // Prepare all URLs requests
-  for (var i = 0; i < initialReq.length; i++){
+  for (var i = 0; i < initialRequests.length; i++){
     
     // Transform string request in object
-    if (typeof initialReq[i] === 'string'){
-      initialReq[i] = {
+    if (typeof initialRequests[i] === 'string'){
+      initialRequests[i] = {
         optQueryParameters: {},
-        path: initialReq[i]
+        path: initialRequests[i]
       };
     }
     else {
       // Make sure that query parameters are initialized
-      initialReq[i].optQueryParameters = initialReq[i].optQueryParameters || {};
-      initialReq[i].path = initialReq[i].path || '';
+      initialRequests[i].optQueryParameters = initialRequests[i].optQueryParameters || {};
+      initialRequests[i].path = initialRequests[i].path || '';
     }
     
     // Init request object
@@ -374,11 +374,11 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
       muteHttpExceptions: true,
       headers: {},
       url: '',
-      method: initialReq[i].method || 'get'
+      method: initialRequests[i].method || 'get'
     };
     
     // Add data if any
-    'data' in initialReq[i] && (requestParam.payload = JSON.stringify(initialReq[i].data));
+    'data' in initialRequests[i] && (requestParam.payload = JSON.stringify(initialRequests[i].data));
     
     // Add Authorization header if necessary
     headers['Authorization'] && (requestParam.headers['Authorization'] = headers['Authorization']);
@@ -390,23 +390,23 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
     }
     
     // Add authToken if needed
-    authToken && (initialReq[i].optQueryParameters['auth'] = authToken);
+    authToken && (initialRequests[i].optQueryParameters['auth'] = authToken);
     
     
     // Build parameters before adding them in the url
     var parameters = [];
-    for (var key in initialReq[i].optQueryParameters) {
+    for (var key in initialRequests[i].optQueryParameters) {
       
       // Encode non boolean parameters (except whitelisted keys)
-      if (!FirebaseApp_._keyWhiteList[key] && typeof initialReq[i].optQueryParameters[key] === 'string') {
-        initialReq[i].optQueryParameters[key] = encodeURIComponent('"'+ initialReq[i].optQueryParameters[key] +'"');
+      if (!FirebaseApp_._keyWhiteList[key] && typeof initialRequests[i].optQueryParameters[key] === 'string') {
+        initialRequests[i].optQueryParameters[key] = encodeURIComponent('"'+ initialRequests[i].optQueryParameters[key] +'"');
       }
       
-      parameters.push(key +'='+ initialReq[i].optQueryParameters[key]);
+      parameters.push(key +'='+ initialRequests[i].optQueryParameters[key]);
     }
     
     // Build request URL
-    requestParam.url = db.base.url + initialReq[i].path + '.json'+ (parameters.length ? '?'+ parameters.join('&') : '');
+    requestParam.url = db.base.url + initialRequests[i].path + '.json'+ (parameters.length ? '?'+ parameters.join('&') : '');
     
     // Store request
     finalRequests.push(requestParam);
@@ -414,14 +414,14 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
   
   
   // Get request results
-  FirebaseApp_._sendAllRequests(finalRequests, initialReq, db);
+  FirebaseApp_._sendAllRequests(finalRequests, initialRequests, db);
   var data = [];
   
   // Store each response in an object with the respective Firebase path as key
-  for (var j = 0; j < initialReq.length; j++){
-    data.push('response' in initialReq[j]
-      ? initialReq[j].response
-      : initialReq[j].error
+  for (var j = 0; j < initialRequests.length; j++){
+    data.push('response' in initialRequests[j]
+      ? initialRequests[j].response
+      : initialRequests[j].error
     )
   }
   
