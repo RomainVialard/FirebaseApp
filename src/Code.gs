@@ -502,7 +502,7 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
     var responseContent = responses[i].getContentText();
     
     // Avoid returning the Firebase app secret in case of error
-    if (responseContent.indexOf(db.base.secret) !== -1){
+    if (typeof responseContent === 'string' && responseContent.indexOf(db.base.secret) !== -1){
       errorCount += 1;
       
       originalsRequests[i].error = new Error(FirebaseApp_._ERROR_TRY_AGAIN);
@@ -522,6 +522,8 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
     }
     catch(e){
       errorMessage = FirebaseApp_._ERROR_TRY_AGAIN;
+      // if responseContent is undefined => internal error sur UrlFetch service, try again
+      // It will be caught as JSON.parse(undefined) will fail
     }
     
     // Process possible errors and retry
