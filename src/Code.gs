@@ -84,23 +84,12 @@ baseClass_.createAuthToken = function (userEmail, optAuthData, serviceAccountEma
  * Generates an authorization token to Firebase
  *
  * @param  {string} userEmail the email account of the user you want to authenticate
- * @param  {object} optAuthData keypairs of data to be associated to this user.
+ * @param  {object} optAuthData keypairs of data to be associated to this user (aka custom claims).
  * @return {object} the auth token granting access to firebase
  */
 baseClass_.createAuthTokenFromServiceAccount_ = function (userEmail, optAuthData) {
   if (!("serviceAccountEmail" in this.base) || !("privateKey" in this.base)) {
     throw Error("You must provide both the serviceEmailAccount and the privateKey to generate a token")
-  }
-  // Specific YAMM
-  if (!optAuthData) {
-    var tmp = userEmail.split('@');
-    var username = tmp[0];
-    var domain = tmp[1];
-    optAuthData = {
-      domain: domain.replace(/\./g, '-'),
-      username: username.replace(/^0+/, '').replace(/\./g, '-'),
-      emailAddress: userEmail
-    }
   }
   
   var header = JSON.stringify({
