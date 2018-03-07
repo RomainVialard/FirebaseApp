@@ -1,5 +1,6 @@
 /*
 FirebaseApp
+https://github.com/RomainVialard/FirebaseApp
 
 Copyright (c) 2016 - 2018 Romain Vialard - Ludovic Lefebure - Spencer Easton - Jean-Rémi Delteil - Simon Debray
 
@@ -45,10 +46,30 @@ function getDatabaseByUrl(url, optSecret) {
   });
 }
 
+/**
+ * Returns a valid Firebase key from a given string
+ * Firebase Keys can't contain any of the following characters: . $ # [ ] /
+ * https://firebase.google.com/docs/database/usage/limits#data_tree
+ *
+ * @param  {string} string - the string to encode
+ *
+ * @return {string} the encoded string
+ */
+function encodeAsFirebaseKey(string) {
+  return string.replace(/\%/g, '%25')
+    .replace(/\./g, '%2E')
+    .replace(/\#/g, '%23')
+    .replace(/\$/g, '%24')
+    .replace(/\//g, '%2F')
+    .replace(/\[/g, '%5B')
+    .replace(/\]/g, '%5D');
+}
+
 // noinspection JSUnusedGlobalSymbols, ThisExpressionReferencesGlobalObjectJS
 this['FirebaseApp'] = {
   // Add local alias to run the library as normal code
-  getDatabaseByUrl: getDatabaseByUrl
+  getDatabaseByUrl: getDatabaseByUrl,
+  encodeAsFirebaseKey: encodeAsFirebaseKey
 };
 
 var baseClass_ = FirebaseApp_.Base.prototype;
