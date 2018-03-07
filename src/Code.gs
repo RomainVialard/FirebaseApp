@@ -50,6 +50,7 @@ function getDatabaseByUrl(url, optSecret) {
  * Returns a valid Firebase key from a given string
  * Firebase Keys can't contain any of the following characters: . $ # [ ] /
  * https://firebase.google.com/docs/database/usage/limits#data_tree
+ * https://groups.google.com/forum/#!msg/firebase-talk/vtX8lfxxShk/skzA5vQFdosJ
  *
  * @param  {string} string - the string to encode
  *
