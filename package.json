@@ -1,6 +1,6 @@
 {
   "name": "@scriptaddicts/gas-firebase-app",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Google Apps Script Firebase connector",
   "license": "Apache-2.0",
   "author": {
