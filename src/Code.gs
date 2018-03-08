@@ -102,27 +102,40 @@ baseClass_.createAuthToken = function (userEmail, optAuthData, serviceAccountEma
   }
 };
 
+
+FirebaseApp_._CustomClaimBlackList = {
+  'iss': true,
+  'sub': true,
+  'aud': true,
+  'exp': true,
+  'iat': true,
+  'auth_time': true,
+  'nonce': true,
+  'acr': true,
+  'amr': true,
+  'azp': true,
+  
+  'email': true,
+  'email_verified': true,
+  'phone_number	': true,
+  'name': true,
+  'firebase	': true
+};
+FirebaseApp_._ERROR_INVALID_CUSTOM_CLAIMS_KEY = "Invalid custom claims key";
+FirebaseApp_._ERROR_INVALID_CUSTOM_CLAIMS_LENGTH = "Invalid custom claims length (>1000)";
+
+
 /**
  * Generates an authorization token to Firebase
  *
- * @param  {string} userEmail the email account of the user you want to authenticate
- * @param  {object} optAuthData keypairs of data to be associated to this user.
+ * @param  {string} userEmail - the email account of the user you want to authenticate
+ * @param  {object} optCustomClaims - key-pairs of data to be associated to this user (aka custom claims).
+ * 
  * @return {object} the auth token granting access to firebase
  */
-baseClass_.createAuthTokenFromServiceAccount_ = function (userEmail, optAuthData) {
+baseClass_.createAuthTokenFromServiceAccount_ = function (userEmail, optCustomClaims) {
   if (!("serviceAccountEmail" in this.base) || !("privateKey" in this.base)) {
     throw Error("You must provide both the serviceEmailAccount and the privateKey to generate a token")
-  }
-  // Specific YAMM
-  if (!optAuthData) {
-    var tmp = userEmail.split('@');
-    var username = tmp[0];
-    var domain = tmp[1];
-    optAuthData = {
-      domain: domain.replace(/\./g, '-'),
-      username: username.replace(/^0+/, '').replace(/\./g, '-'),
-      emailAddress: userEmail
-    }
   }
   
   var header = JSON.stringify({
@@ -130,6 +143,7 @@ baseClass_.createAuthTokenFromServiceAccount_ = function (userEmail, optAuthData
     "alg": "RS256"
   });
   header = Utilities.base64EncodeWebSafe(header);
+  
   var now = Math.floor((new Date).getTime() / 1E3);
   var body = {
     "iss": this.base.serviceAccountEmail,
@@ -141,11 +155,17 @@ baseClass_.createAuthTokenFromServiceAccount_ = function (userEmail, optAuthData
     "claims": {}
   };
   
-  if (optAuthData) {
-    Object.keys(optAuthData).forEach(function (item) {
-      body.claims[item] = optAuthData[item];
-    });
-  }
+  // Add custom claims if any
+  optCustomClaims && Object.keys(optCustomClaims).forEach(function (item) {
+    // Throw on invalid Custom Claims key (https://firebase.google.com/docs/auth/admin/custom-claims#set_and_validate_custom_user_claims_via_the_admin_sdk)
+    if (FirebaseApp_._CustomClaimBlackList[item]) throw new Error(FirebaseApp_._ERROR_INVALID_CUSTOM_CLAIMS_KEY);
+    
+    body.claims[item] = optCustomClaims[item];
+  });
+  
+  // Check Custom Claims length
+  if (JSON.stringify(body.claims).length > 1000) throw new Error(FirebaseApp_._ERROR_INVALID_CUSTOM_CLAIMS_LENGTH);
+  
   body = JSON.stringify(body); //Stringified after adding optional auth data
   body = Utilities.base64Encode(body);
   var signature = Utilities.computeRsaSha256Signature(header + "." + body, this.base.privateKey);
