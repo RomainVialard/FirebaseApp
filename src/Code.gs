@@ -468,8 +468,8 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
       parameters.push(key +'='+ initialRequests[i].optQueryParameters[key]);
     }
     
-    // Build request URL, encode "%2E" to avoid URL path auto decoding to '.'
-    requestParam.url = db.base.url + initialRequests[i].path.replace(/%2[Ee]/g, "%252E") + '.json'+ (parameters.length ? '?'+ parameters.join('&') : '');
+    // Build request URL, encode all "%" to avoid URL path auto decoding
+    requestParam.url = db.base.url + initialRequests[i].path.replace(/%/g, '%25') + '.json'+ (parameters.length ? '?'+ parameters.join('&') : '');
     
     // Store request
     finalRequests.push(requestParam);
