@@ -236,13 +236,17 @@ baseClass_.createLegacyAuthToken_ = function (userEmail, optAuthData) {
  */
 baseClass_.getData = function (path, optQueryParameters) {
   // Send request
-  var res = FirebaseApp_._buildAllRequests([{
+  // noinspection JSAnnotator
+  var [res] = FirebaseApp_._buildAllRequests([{
     method: 'get',
     path: path,
     optQueryParameters: optQueryParameters
   }], this);
   
-  return res[0];
+  // Throw error
+  if (res instanceof Error) throw res;
+  
+  return res;
 };
 
 /**
@@ -267,14 +271,18 @@ baseClass_.getAllData = function (requests) {
  */
 baseClass_.pushData = function (path, data, optQueryParameters) {
   // Send request
-  var res = FirebaseApp_._buildAllRequests([{
+  // noinspection JSAnnotator
+  var [res] = FirebaseApp_._buildAllRequests([{
     method: 'post',
     path: path,
     data: data,
     optQueryParameters: optQueryParameters
   }], this);
   
-  return res[0];
+  // Throw error
+  if (res instanceof Error) throw res;
+  
+  return res;
 };
 
 /**
@@ -288,14 +296,18 @@ baseClass_.pushData = function (path, data, optQueryParameters) {
  */
 baseClass_.setData = function (path, data, optQueryParameters) {
   // Send request
-  var res = FirebaseApp_._buildAllRequests([{
+  // noinspection JSAnnotator
+  var [res] = FirebaseApp_._buildAllRequests([{
     method: 'put',
     path: path,
     data: data,
     optQueryParameters: optQueryParameters
   }], this);
   
-  return res[0];
+  // Throw error
+  if (res instanceof Error) throw res;
+  
+  return res;
 };
 
 /**
@@ -309,14 +321,18 @@ baseClass_.setData = function (path, data, optQueryParameters) {
  */
 baseClass_.updateData = function (path, data, optQueryParameters) {
   // Send request
-  var res = FirebaseApp_._buildAllRequests([{
+  // noinspection JSAnnotator
+  var [res] = FirebaseApp_._buildAllRequests([{
     method: 'patch',
     path: path,
     data: data,
     optQueryParameters: optQueryParameters
   }], this);
   
-  return res[0];
+  // Throw error
+  if (res instanceof Error) throw res;
+  
+  return res;
 };
 
 /**
@@ -328,13 +344,17 @@ baseClass_.updateData = function (path, data, optQueryParameters) {
  */
 baseClass_.removeData = function (path, optQueryParameters) {
   // Send request
-  var res = FirebaseApp_._buildAllRequests([{
+  // noinspection JSAnnotator
+  var [res] = FirebaseApp_._buildAllRequests([{
     method: 'delete',
     path: path,
     optQueryParameters: optQueryParameters
   }], this);
   
-  return res[0];
+  // Throw error
+  if (res instanceof Error) throw res;
+  
+  return res;
 };
 
 
@@ -358,6 +378,7 @@ FirebaseApp_._methodWhiteList = {
 };
 FirebaseApp_._ERROR_TRY_AGAIN = "We're sorry, a server error occurred. Please wait a bit and try again.";
 FirebaseApp_._ERROR_GLOBAL_CRASH = "We're sorry, a server error occurred. Please wait a bit and try again.";
+FirebaseApp_._PERMISSION_DENIED = "Permission denied";
 
 /**
  * @typedef {{
@@ -544,7 +565,7 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
     var responseContent = responses[i].getContentText();
     
     // Avoid returning the Firebase app secret in case of error
-    if (typeof responseContent === 'string' && responseContent.indexOf(db.base.secret) !== -1){
+    if (db.base.secret && typeof responseContent === 'string' && responseContent.indexOf(db.base.secret) !== -1){
       errorCount += 1;
       
       originalsRequests[i].error = new Error(FirebaseApp_._ERROR_TRY_AGAIN);
@@ -581,7 +602,7 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
     }
     
     // Save valid response
-    if (responseCode === 200){
+    if (responseCode === 200) {
       
       // For POST request, the result is a JSON {"name": "$newKey"} and we want to return the $newKey
       if (finalRequests[i].method === 'post' && finalRequests[i].headers['X-HTTP-Method-Override'] !== 'PATCH'){
@@ -593,6 +614,13 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
       
       // Delete possible previous error (when in re-try)
       delete originalsRequests[i].error;
+      
+      continue;
+    }
+    
+    // mainly "Permission denied" error, can also be "Invalid path" error
+    else if (responseCode === 401) {
+      originalsRequests[i].error = new Error(responseParsed.error || FirebaseApp_._PERMISSION_DENIED);
       
       continue;
     }
