@@ -176,21 +176,10 @@ baseClass_.createAuthTokenFromServiceAccount_ = function (userEmail, optCustomCl
  * Generates an authorization token to firebase
  *
  * @param  {string} userEmail the email account of the user you want to authenticate
- * @param  {object} optAuthData keypairs of data to be associated to this user.
+ * @param  {object} optCustomClaims - key-pairs of data to be associated to this user (aka custom claims).
  * @return {object} the auth token granting access to firebase
  */
-baseClass_.createLegacyAuthToken_ = function (userEmail, optAuthData) {
-  // Specific YAMM
-  if (!optAuthData) {
-    var tmp = userEmail.split('@');
-    var username = tmp[0];
-    var domain = tmp[1];
-    optAuthData = {
-      domain: domain.replace(/\./g, '-'),
-      username: username.replace(/^0+/, '').replace(/\./g, '-'),
-      emailAddress: userEmail
-    }
-  }
+baseClass_.createLegacyAuthToken_ = function (userEmail, optCustomClaims) {
   var header = JSON.stringify({
     "typ": "JWT",
     "alg": "HS256"
@@ -204,9 +193,9 @@ baseClass_.createLegacyAuthToken_ = function (userEmail, optAuthData) {
     // iat : 'issued at' in second
     "iat": Math.floor((new Date).getTime() / 1E3)
   };
-  if (optAuthData) {
-    Object.keys(optAuthData).forEach(function (item) {
-      payload.d[item] = optAuthData[item];
+  if (optCustomClaims) {
+    Object.keys(optCustomClaims).forEach(function (item) {
+      payload.d[item] = optCustomClaims[item];
     });
   }
   payload = JSON.stringify(payload); //Stringified after adding optional auth data
