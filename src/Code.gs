@@ -368,6 +368,7 @@ FirebaseApp_._methodWhiteList = {
 FirebaseApp_._ERROR_TRY_AGAIN = "We're sorry, a server error occurred. Please wait a bit and try again.";
 FirebaseApp_._ERROR_GLOBAL_CRASH = "We're sorry, a server error occurred. Please wait a bit and try again.";
 FirebaseApp_._PERMISSION_DENIED = "Permission denied";
+FirebaseApp_._INVALID_DATA = "Invalid data; couldn't parse JSON object. Are you sending a JSON object with valid key names?";
 
 /**
  * @typedef {{
@@ -502,8 +503,9 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
         UrlFetchApp.fetch(finalRequests[0].url, finalRequests[0])
       ];
     }
-    catch(e){
-      // In case of timeout, if we are writing data, assume firebase will eventually write -> ignore return value
+    catch(e) {
+      // As muteHttpExceptions is set to true we are only catching timeout errors here (after 60s)
+      // If we are writing data, assume Firebase will eventually write -> ignore failure
       if (FirebaseApp_._methodWhiteList[ finalRequests[0].method ]){
         responses = [
           new FirebaseApp_.FetchResponse(200, undefined)
@@ -574,7 +576,7 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
     }
     catch(e){
       errorMessage = FirebaseApp_._ERROR_TRY_AGAIN;
-      // if responseContent is undefined => internal error sur UrlFetch service, try again
+      // if responseContent is undefined => internal error on UrlFetch service, try again
       // It will be caught as JSON.parse(undefined) will fail
     }
     
@@ -614,7 +616,7 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
       continue;
     }
     
-    // All other cases are errors that we do not retry
+    // All other cases are errors on which we perform a retry
     originalsRequests[i].error = new Error(FirebaseApp_._ERROR_TRY_AGAIN);
   }
   
@@ -660,4 +662,3 @@ FirebaseApp_.FetchResponse.prototype.getResponseCode = function () {
 FirebaseApp_.FetchResponse.prototype.getContentText = function () {
   return this.content;
 };
-
