@@ -606,10 +606,12 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
     }
     
     // Retry on specific response codes, specific error messages or if we failed to parse the response
-    if (FirebaseApp_._errorCodeList[responseCode] || (responseParsed && responseParsed.error && FirebaseApp_.NORETRY_ERRORS[responseParsed.error]) || errorMessage) {
+    if (FirebaseApp_._errorCodeList[responseCode] || !(responseParsed && responseParsed.error && FirebaseApp_.NORETRY_ERRORS[responseParsed.error]) || errorMessage) {
       errorCount += 1;
       
-      originalsRequests[i].error = new Error(errorMessage || (responseParsed && responseParsed.error) || FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN);
+      // Add the response code to the error message if it comes from the response
+      if (responseParsed && responseParsed.error) originalsRequests[i].error = new Error(responseCode + " - " + responseParsed.error);
+      else originalsRequests[i].error = new Error(errorMessage || FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN);
       
       retry.finalReq.push(finalRequests[i]);
       retry.originalReq.push(originalsRequests[i]);
