@@ -66,13 +66,6 @@ function encodeAsFirebaseKey(string) {
     .replace(/\]/g, '%5D');
 }
 
-// noinspection JSUnusedGlobalSymbols, ThisExpressionReferencesGlobalObjectJS
-this['FirebaseApp'] = {
-  // Add local alias to run the library as normal code
-  getDatabaseByUrl: getDatabaseByUrl,
-  encodeAsFirebaseKey: encodeAsFirebaseKey
-};
-
 var baseClass_ = FirebaseApp_.Base.prototype;
 
 /**
@@ -354,21 +347,50 @@ FirebaseApp_._keyWhiteList = {
   limitToFirst: true,
   limitToLast: true
 };
+
 FirebaseApp_._errorCodeList = {
   '400': true, // bad request
   // '401': true, // Unauthorized (we do not retry on this error, as this is sent on unauthorized access by the rules)
   '500': true, // Internal Server Error
   '502': true // Bad Gateway
 };
+
 FirebaseApp_._methodWhiteList = {
   'post': true,
   'put': true,
   'delete': true
 };
-FirebaseApp_._ERROR_TRY_AGAIN = "We're sorry, a server error occurred. Please wait a bit and try again.";
-FirebaseApp_._ERROR_GLOBAL_CRASH = "We're sorry, a server error occurred. Please wait a bit and try again.";
-FirebaseApp_._PERMISSION_DENIED = "Permission denied";
-FirebaseApp_._INVALID_DATA = "Invalid data; couldn't parse JSON object. Are you sending a JSON object with valid key names?";
+
+/**
+ * @typedef {string} FirebaseApp_.NORMALIZED_ERROR
+ */
+
+/**
+ * List all known Errors
+ */
+FirebaseApp_.NORMALIZED_ERRORS = {
+  TRY_AGAIN: "We're sorry, a server error occurred. Please wait a bit and try again.",
+  GLOBAL_CRASH: "We're sorry, a server error occurred. Please wait a bit and try again.",
+  PERMISSION_DENIED: "Permission denied",
+  INVALID_DATA: "Invalid data; couldn't parse JSON object. Are you sending a JSON object with valid key names?"
+};
+
+/**
+ * List errors on which no retry is needed
+ */
+FirebaseApp_.NORETRY_ERRORS = {};
+FirebaseApp_.NORETRY_ERRORS[FirebaseApp_.NORMALIZED_ERRORS.PERMISSION_DENIED] = true;
+FirebaseApp_.NORETRY_ERRORS[FirebaseApp_.NORMALIZED_ERRORS.INVALID_DATA] = true;
+
+
+// noinspection JSUnusedGlobalSymbols, ThisExpressionReferencesGlobalObjectJS
+this['FirebaseApp'] = {
+  // Add local alias to run the library as normal code
+  getDatabaseByUrl: getDatabaseByUrl,
+  encodeAsFirebaseKey: encodeAsFirebaseKey,
+  
+  NORMALIZED_ERRORS: FirebaseApp_.NORMALIZED_ERRORS
+};
 
 /**
  * @typedef {{
@@ -526,7 +548,7 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
     catch(e){
       // <e> will contain the problematic URL (only one) in clear, so with the secret if provided.
       // As we are not able to clearly tell which request crashed, and we will not retry with excluding request one by one
-      throw new Error(FirebaseApp_._ERROR_GLOBAL_CRASH);
+      throw new Error(FirebaseApp_.NORMALIZED_ERRORS.GLOBAL_CRASH);
     }
   }
   
@@ -559,14 +581,13 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
     if (db.base.secret && typeof responseContent === 'string' && responseContent.indexOf(db.base.secret) !== -1){
       errorCount += 1;
       
-      originalsRequests[i].error = new Error(FirebaseApp_._ERROR_TRY_AGAIN);
+      originalsRequests[i].error = new Error(FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN);
       
       retry.finalReq.push(finalRequests[i]);
       retry.originalReq.push(originalsRequests[i]);
       
       continue;
     }
-    
     
     // try parsing response
     var errorMessage;
@@ -575,16 +596,16 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
       responseParsed = JSON.parse(responseContent);
     }
     catch(e){
-      errorMessage = FirebaseApp_._ERROR_TRY_AGAIN;
       // if responseContent is undefined => internal error on UrlFetch service, try again
-      // It will be caught as JSON.parse(undefined) will fail
+      // It is caught as JSON.parse(undefined) fails ("Unexpected token")
+      errorMessage = FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN;
     }
     
     // Process possible errors and retry
     if (FirebaseApp_._errorCodeList[responseCode] || errorMessage) {
       errorCount += 1;
       
-      originalsRequests[i].error = new Error(errorMessage || (responseParsed && responseParsed.error) || FirebaseApp_._ERROR_TRY_AGAIN);
+      originalsRequests[i].error = new Error(errorMessage || (responseParsed && responseParsed.error) || FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN);
       
       retry.finalReq.push(finalRequests[i]);
       retry.originalReq.push(originalsRequests[i]);
@@ -609,15 +630,20 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
       continue;
     }
     
-    // mainly "Permission denied" error, can also be "Invalid path" error
-    else if (responseCode === 401) {
-      originalsRequests[i].error = new Error(responseParsed.error || FirebaseApp_._PERMISSION_DENIED);
+    if (responseCode === 401) {
+      originalsRequests[i].error = new Error(responseParsed.error || FirebaseApp_.NORMALIZED_ERRORS.PERMISSION_DENIED);
+      
+      continue;
+    }
+    
+    if (responseParsed && responseParsed.error && FirebaseApp_.NORETRY_ERRORS[responseParsed.error]) {
+      originalsRequests[i].error = new Error(responseParsed.error);
       
       continue;
     }
     
     // All other cases are errors on which we perform a retry
-    originalsRequests[i].error = new Error(FirebaseApp_._ERROR_TRY_AGAIN);
+    originalsRequests[i].error = new Error(FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN);
   }
   
   // Retry the errors, 6 times maximum,
