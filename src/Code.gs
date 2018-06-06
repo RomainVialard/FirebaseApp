@@ -114,8 +114,6 @@ FirebaseApp_._CustomClaimBlackList = {
   'name': true,
   'firebase	': true
 };
-FirebaseApp_._ERROR_INVALID_CUSTOM_CLAIMS_KEY = "Invalid custom claims key";
-FirebaseApp_._ERROR_INVALID_CUSTOM_CLAIMS_LENGTH = "Invalid custom claims length (>1000)";
 
 
 /**
@@ -151,13 +149,13 @@ baseClass_.createAuthTokenFromServiceAccount_ = function (userEmail, optCustomCl
   // Add custom claims if any
   optCustomClaims && Object.keys(optCustomClaims).forEach(function (item) {
     // Throw on invalid Custom Claims key (https://firebase.google.com/docs/auth/admin/custom-claims#set_and_validate_custom_user_claims_via_the_admin_sdk)
-    if (FirebaseApp_._CustomClaimBlackList[item]) throw new Error(FirebaseApp_._ERROR_INVALID_CUSTOM_CLAIMS_KEY);
+    if (FirebaseApp_._CustomClaimBlackList[item]) throw new Error(FirebaseApp_.NORMALIZED_ERRORS.INVALID_CUSTOM_CLAIMS_KEY);
     
     body.claims[item] = optCustomClaims[item];
   });
   
   // Check Custom Claims length
-  if (JSON.stringify(body.claims).length > 1000) throw new Error(FirebaseApp_._ERROR_INVALID_CUSTOM_CLAIMS_LENGTH);
+  if (JSON.stringify(body.claims).length > 1000) throw new Error(FirebaseApp_.NORMALIZED_ERRORS.INVALID_CUSTOM_CLAIMS_LENGTH);
   
   body = JSON.stringify(body); //Stringified after adding optional auth data
   body = Utilities.base64Encode(body);
@@ -372,8 +370,11 @@ FirebaseApp_.NORMALIZED_ERRORS = {
   TRY_AGAIN: "We're sorry, a server error occurred. Please wait a bit and try again.",
   GLOBAL_CRASH: "We're sorry, a server error occurred. Please wait a bit and try again.",
   PERMISSION_DENIED: "Permission denied",
-  INVALID_DATA: "Invalid data; couldn't parse JSON object. Are you sending a JSON object with valid key names?"
+  INVALID_DATA: "Invalid data; couldn't parse JSON object. Are you sending a JSON object with valid key names?",
+  INVALID_CUSTOM_CLAIMS_KEY: "Invalid custom claims key",
+  INVALID_CUSTOM_CLAIMS_LENGTH: "Invalid custom claims length (>1000)",
 };
+
 
 /**
  * List errors on which no retry is needed
@@ -553,6 +554,7 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
   }
   
   var errorCount = 0;
+  // to push all requests that should be retried
   var retry = {
     finalReq: [],
     originalReq: []
@@ -565,7 +567,8 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
   for (var i = 0; i < responses.length; i++){
     var responseCode = responses[i].getResponseCode();
     
-    // print=silent returns a 204 No Content on success
+    // print=silent, used to improve write performance returns a 204 No Content on success
+    // https://firebase.google.com/docs/database/rest/save-data#section-rest-write-performance
     if (responseCode === 204){
       originalsRequests[i].response = undefined;
       
@@ -577,7 +580,8 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
     
     var responseContent = responses[i].getContentText();
     
-    // Avoid returning the Firebase app secret in case of error
+    // if response content is a string and contains the Firebase secret, assume it's an error on which a retry is needed
+    // and replace the error returned by a generic one to avoid throwing the secret
     if (db.base.secret && typeof responseContent === 'string' && responseContent.indexOf(db.base.secret) !== -1){
       errorCount += 1;
       
@@ -589,9 +593,9 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
       continue;
     }
     
-    // try parsing response
     var errorMessage;
     var responseParsed;
+    // try parsing response
     try{
       responseParsed = JSON.parse(responseContent);
     }
@@ -601,8 +605,8 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
       errorMessage = FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN;
     }
     
-    // Process possible errors and retry
-    if (FirebaseApp_._errorCodeList[responseCode] || errorMessage) {
+    // Retry on specific response codes, specific error messages or if we failed to parse the response
+    if (FirebaseApp_._errorCodeList[responseCode] || (responseParsed && responseParsed.error && FirebaseApp_.NORETRY_ERRORS[responseParsed.error]) || errorMessage) {
       errorCount += 1;
       
       originalsRequests[i].error = new Error(errorMessage || (responseParsed && responseParsed.error) || FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN);
@@ -636,19 +640,14 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
       continue;
     }
     
-    if (responseParsed && responseParsed.error && FirebaseApp_.NORETRY_ERRORS[responseParsed.error]) {
-      originalsRequests[i].error = new Error(responseParsed.error);
-      
-      continue;
-    }
-    
-    // All other cases are errors on which we perform a retry
+    // All other cases are errors that we do not retry
     originalsRequests[i].error = new Error(FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN);
   }
   
-  // Retry the errors, 6 times maximum,
-  // and for the first try only retry if
+  // Retry at max 6 times on failed calls
+  // and - for the first try - only retry if
   // there are less than 100 errors and the error number account for less than a quarter of the requests
+  // This is to avoid emptying the UrlFetchApp quota for nothing
   if (errorCount && n <= 6 && (n > 0 || (errorCount <= 100 && errorCount < originalsRequests.length / 4))){
     // Exponential back-off is needed as server errors are more and more common on Firebase
     Utilities.sleep((Math.pow(2, n) * 1000) + (Math.round(Math.random() * 1000)));
