@@ -458,7 +458,7 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
     }
     
     // Build request URL, encode all "%" to avoid URL path auto decoding
-    requestParam.url = db.base.url + initialRequests[i].path.replace(/%/g, '%25') + '.json'+ (parameters.length ? '?'+ parameters.join('&') : '');
+    requestParam.url = db.base.url + initialRequests[i].path.replace(/%/g, '%25').replace(/\+/g, '%2b') + '.json'+ (parameters.length ? '?'+ parameters.join('&') : '');
     
     // Store request
     finalRequests.push(requestParam);
@@ -660,4 +660,3 @@ FirebaseApp_.FetchResponse.prototype.getResponseCode = function () {
 FirebaseApp_.FetchResponse.prototype.getContentText = function () {
   return this.content;
 };
-
