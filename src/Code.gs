@@ -1,21 +1,21 @@
 /*
-FirebaseApp
-https://github.com/RomainVialard/FirebaseApp
-
-Copyright (c) 2016 - 2018 Romain Vialard - Ludovic Lefebure - Spencer Easton - Jean-Rémi Delteil - Simon Debray
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-*/
+ FirebaseApp
+ https://github.com/RomainVialard/FirebaseApp
+ 
+ Copyright (c) 2016 - 2018 Romain Vialard - Ludovic Lefebure - Spencer Easton - Jean-Rémi Delteil - Simon Debray
+ 
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+ 
+ http://www.apache.org/licenses/LICENSE-2.0
+ 
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ */
 var FirebaseApp_ = {};
 
 FirebaseApp_.Base = function (base) {
@@ -42,7 +42,7 @@ FirebaseApp_.Base = function (base) {
 function getDatabaseByUrl(url, optSecret) {
   return new FirebaseApp_.Base({
     url: url,
-    secret: optSecret || ''
+    secret: optSecret || '',
   });
 }
 
@@ -72,7 +72,7 @@ var baseClass_ = FirebaseApp_.Base.prototype;
  * Generates an authorization token to firebase
  *
  * @param  {string} userEmail the email account of the user you want to authenticate
- * @param  {object} optAuthData keypairs of data to be associated to this user.
+ * @param  {object} optAuthData key-pairs of data to be associated to this user.
  * @param  {string} serviceAccountEmail the email of the service account used to generate this token
  * @param  {string} privateKey the private key of this service account
  * @return {object} the auth token granting access to firebase
@@ -112,7 +112,7 @@ FirebaseApp_._CustomClaimBlackList = {
   'email_verified': true,
   'phone_number	': true,
   'name': true,
-  'firebase	': true
+  'firebase	': true,
 };
 
 
@@ -121,17 +121,17 @@ FirebaseApp_._CustomClaimBlackList = {
  *
  * @param  {string} userEmail - the email account of the user you want to authenticate
  * @param  {object} optCustomClaims - key-pairs of data to be associated to this user (aka custom claims).
- * 
+ *
  * @return {object} the auth token granting access to firebase
  */
 baseClass_.createAuthTokenFromServiceAccount_ = function (userEmail, optCustomClaims) {
   if (!("serviceAccountEmail" in this.base) || !("privateKey" in this.base)) {
-    throw Error("You must provide both the serviceEmailAccount and the privateKey to generate a token")
+    throw Error("You must provide both the serviceEmailAccount and the privateKey to generate a token");
   }
   
   var header = JSON.stringify({
     "typ": "JWT",
-    "alg": "RS256"
+    "alg": "RS256",
   });
   header = Utilities.base64EncodeWebSafe(header);
   
@@ -143,21 +143,25 @@ baseClass_.createAuthTokenFromServiceAccount_ = function (userEmail, optCustomCl
     "iat": now,
     "exp": now + 3600,
     "uid": userEmail.replace(/[|&;$%@"<>()+,.]/g, ""),
-    "claims": {}
+    "claims": {},
   };
   
   // Add custom claims if any
   optCustomClaims && Object.keys(optCustomClaims).forEach(function (item) {
     // Throw on invalid Custom Claims key (https://firebase.google.com/docs/auth/admin/custom-claims#set_and_validate_custom_user_claims_via_the_admin_sdk)
-    if (FirebaseApp_._CustomClaimBlackList[item]) throw new Error(FirebaseApp_.NORMALIZED_ERRORS.INVALID_CUSTOM_CLAIMS_KEY);
+    if (FirebaseApp_._CustomClaimBlackList[item]) {
+      throw new Error(FirebaseApp_.NORMALIZED_ERRORS.INVALID_CUSTOM_CLAIMS_KEY);
+    }
     
     body.claims[item] = optCustomClaims[item];
   });
   
   // Check Custom Claims length
-  if (JSON.stringify(body.claims).length > 1000) throw new Error(FirebaseApp_.NORMALIZED_ERRORS.INVALID_CUSTOM_CLAIMS_LENGTH);
+  if (JSON.stringify(body.claims).length > 1000) {
+    throw new Error(FirebaseApp_.NORMALIZED_ERRORS.INVALID_CUSTOM_CLAIMS_LENGTH);
+  }
   
-  body = JSON.stringify(body); //Stringified after adding optional auth data
+  body = JSON.stringify(body); // Stringified after adding optional auth data
   body = Utilities.base64Encode(body);
   var signature = Utilities.computeRsaSha256Signature(header + "." + body, this.base.privateKey);
   return header + "." + body + "." + Utilities.base64Encode(signature);
@@ -173,23 +177,22 @@ baseClass_.createAuthTokenFromServiceAccount_ = function (userEmail, optCustomCl
 baseClass_.createLegacyAuthToken_ = function (userEmail, optCustomClaims) {
   var header = JSON.stringify({
     "typ": "JWT",
-    "alg": "HS256"
+    "alg": "HS256",
   });
   header = Utilities.base64EncodeWebSafe(header);
   var payload = {
     "v": 0,
     "d": {
-      "uid": userEmail.replace(/[|&;$%@"<>()+,.]/g, "")
-    },
-    // iat : 'issued at' in second
-    "iat": Math.floor((new Date).getTime() / 1E3)
+      "uid": userEmail.replace(/[|&;$%@"<>()+,.]/g, ""),
+    }, // iat : 'issued at' in second
+    "iat": Math.floor((new Date).getTime() / 1E3),
   };
   if (optCustomClaims) {
     Object.keys(optCustomClaims).forEach(function (item) {
       payload.d[item] = optCustomClaims[item];
     });
   }
-  payload = JSON.stringify(payload); //Stringified after adding optional auth data
+  payload = JSON.stringify(payload); // Stringified after adding optional auth data
   payload = Utilities.base64EncodeWebSafe(payload);
   var hmac = Utilities.computeHmacSha256Signature(header + "." + payload, this.base.secret);
   return header + "." + payload + "." + Utilities.base64EncodeWebSafe(hmac);
@@ -217,14 +220,18 @@ baseClass_.createLegacyAuthToken_ = function (userEmail, optCustomClaims) {
 baseClass_.getData = function (path, optQueryParameters) {
   // Send request
   // noinspection JSAnnotator
-  var [res] = FirebaseApp_._buildAllRequests([{
-    method: 'get',
-    path: path,
-    optQueryParameters: optQueryParameters
-  }], this);
+  var [res] = FirebaseApp_._buildAllRequests([
+    {
+      method: 'get',
+      path: path,
+      optQueryParameters: optQueryParameters,
+    },
+  ], this);
   
   // Throw error
-  if (res instanceof Error) throw res;
+  if (res instanceof Error) {
+    throw res;
+  }
   
   return res;
 };
@@ -252,15 +259,19 @@ baseClass_.getAllData = function (requests) {
 baseClass_.pushData = function (path, data, optQueryParameters) {
   // Send request
   // noinspection JSAnnotator
-  var [res] = FirebaseApp_._buildAllRequests([{
-    method: 'post',
-    path: path,
-    data: data,
-    optQueryParameters: optQueryParameters
-  }], this);
+  var [res] = FirebaseApp_._buildAllRequests([
+    {
+      method: 'post',
+      path: path,
+      data: data,
+      optQueryParameters: optQueryParameters,
+    },
+  ], this);
   
   // Throw error
-  if (res instanceof Error) throw res;
+  if (res instanceof Error) {
+    throw res;
+  }
   
   return res;
 };
@@ -277,15 +288,19 @@ baseClass_.pushData = function (path, data, optQueryParameters) {
 baseClass_.setData = function (path, data, optQueryParameters) {
   // Send request
   // noinspection JSAnnotator
-  var [res] = FirebaseApp_._buildAllRequests([{
-    method: 'put',
-    path: path,
-    data: data,
-    optQueryParameters: optQueryParameters
-  }], this);
+  var [res] = FirebaseApp_._buildAllRequests([
+    {
+      method: 'put',
+      path: path,
+      data: data,
+      optQueryParameters: optQueryParameters,
+    },
+  ], this);
   
   // Throw error
-  if (res instanceof Error) throw res;
+  if (res instanceof Error) {
+    throw res;
+  }
   
   return res;
 };
@@ -302,15 +317,19 @@ baseClass_.setData = function (path, data, optQueryParameters) {
 baseClass_.updateData = function (path, data, optQueryParameters) {
   // Send request
   // noinspection JSAnnotator
-  var [res] = FirebaseApp_._buildAllRequests([{
-    method: 'patch',
-    path: path,
-    data: data,
-    optQueryParameters: optQueryParameters
-  }], this);
+  var [res] = FirebaseApp_._buildAllRequests([
+    {
+      method: 'patch',
+      path: path,
+      data: data,
+      optQueryParameters: optQueryParameters,
+    },
+  ], this);
   
   // Throw error
-  if (res instanceof Error) throw res;
+  if (res instanceof Error) {
+    throw res;
+  }
   
   return res;
 };
@@ -325,14 +344,18 @@ baseClass_.updateData = function (path, data, optQueryParameters) {
 baseClass_.removeData = function (path, optQueryParameters) {
   // Send request
   // noinspection JSAnnotator
-  var [res] = FirebaseApp_._buildAllRequests([{
-    method: 'delete',
-    path: path,
-    optQueryParameters: optQueryParameters
-  }], this);
+  var [res] = FirebaseApp_._buildAllRequests([
+    {
+      method: 'delete',
+      path: path,
+      optQueryParameters: optQueryParameters,
+    },
+  ], this);
   
   // Throw error
-  if (res instanceof Error) throw res;
+  if (res instanceof Error) {
+    throw res;
+  }
   
   return res;
 };
@@ -343,20 +366,20 @@ FirebaseApp_._keyWhiteList = {
   shallow: true,
   print: true,
   limitToFirst: true,
-  limitToLast: true
+  limitToLast: true,
 };
 
 FirebaseApp_._errorCodeList = {
   '400': true, // bad request
   // '401': true, // Unauthorized (we do not retry on this error, as this is sent on unauthorized access by the rules)
   '500': true, // Internal Server Error
-  '502': true // Bad Gateway
+  '502': true, // Bad Gateway
 };
 
 FirebaseApp_._methodWhiteList = {
   'post': true,
   'put': true,
-  'delete': true
+  'delete': true,
 };
 
 /**
@@ -390,7 +413,7 @@ this['FirebaseApp'] = {
   getDatabaseByUrl: getDatabaseByUrl,
   encodeAsFirebaseKey: encodeAsFirebaseKey,
   
-  NORMALIZED_ERRORS: FirebaseApp_.NORMALIZED_ERRORS
+  NORMALIZED_ERRORS: FirebaseApp_.NORMALIZED_ERRORS,
 };
 
 /**
@@ -415,9 +438,7 @@ this['FirebaseApp'] = {
  * @return {Array.<Object | *>}
  */
 FirebaseApp_._buildAllRequests = function (requests, db) {
-  var authToken = db.base.secret,
-      finalRequests = [],
-      headers = {};
+  var authToken = db.base.secret, finalRequests = [], headers = {};
   
   // Deep copy of object to avoid changing it
   /** @type {Array.<string | FirebaseApp_.request>} */
@@ -430,13 +451,13 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
   }
   
   // Prepare all URLs requests
-  for (var i = 0; i < initialRequests.length; i++){
+  for (var i = 0; i < initialRequests.length; i++) {
     
     // Transform string request in object
-    if (typeof initialRequests[i] === 'string'){
+    if (typeof initialRequests[i] === 'string') {
       initialRequests[i] = {
         optQueryParameters: {},
-        path: initialRequests[i]
+        path: initialRequests[i],
       };
     }
     else {
@@ -450,7 +471,7 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
       muteHttpExceptions: true,
       headers: {},
       url: '',
-      method: initialRequests[i].method || 'get'
+      method: initialRequests[i].method || 'get',
     };
     
     // Add data if any
@@ -475,14 +496,14 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
       
       // Encode non boolean parameters (except whitelisted keys)
       if (!FirebaseApp_._keyWhiteList[key] && typeof initialRequests[i].optQueryParameters[key] === 'string') {
-        initialRequests[i].optQueryParameters[key] = encodeURIComponent('"'+ initialRequests[i].optQueryParameters[key] +'"');
+        initialRequests[i].optQueryParameters[key] = encodeURIComponent('"' + initialRequests[i].optQueryParameters[key] + '"');
       }
       
-      parameters.push(key +'='+ initialRequests[i].optQueryParameters[key]);
+      parameters.push(key + '=' + initialRequests[i].optQueryParameters[key]);
     }
     
     // Build request URL, encode all "%" to avoid URL path auto decoding
-    requestParam.url = db.base.url + initialRequests[i].path.replace(/%/g, '%25') + '.json'+ (parameters.length ? '?'+ parameters.join('&') : '');
+    requestParam.url = db.base.url + initialRequests[i].path.replace(/%/g, '%25') + '.json' + (parameters.length ? '?' + parameters.join('&') : '');
     
     // Store request
     finalRequests.push(requestParam);
@@ -494,11 +515,11 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
   var data = [];
   
   // Store each response in an object with the respective Firebase path as key
-  for (var j = 0; j < initialRequests.length; j++){
+  for (var j = 0; j < initialRequests.length; j++) {
     data.push('response' in initialRequests[j]
-      ? initialRequests[j].response
+      ? initialRequests[j].response 
       : initialRequests[j].error
-    )
+    );
   }
   
   return data;
@@ -520,33 +541,31 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
   var responses;
   
   // If we only have one request, use fetch() instead of fetchAll(), as it's quicker
-  if (finalRequests.length === 1){
+  if (finalRequests.length === 1) {
     try {
       responses = [
-        UrlFetchApp.fetch(finalRequests[0].url, finalRequests[0])
+        UrlFetchApp.fetch(finalRequests[0].url, finalRequests[0]),
       ];
-    }
-    catch(e) {
+    } catch (e) {
       // As muteHttpExceptions is set to true we are only catching timeout errors here (after 60s)
       // If we are writing data, assume Firebase will eventually write -> ignore failure
-      if (FirebaseApp_._methodWhiteList[ finalRequests[0].method ]){
+      if (FirebaseApp_._methodWhiteList[finalRequests[0].method]) {
         responses = [
-          new FirebaseApp_.FetchResponse(200, undefined)
+          new FirebaseApp_.FetchResponse(200, undefined),
         ];
       }
-      else{
+      else {
         responses = [
-          new FirebaseApp_.FetchResponse(400, 'Bad request or Time-out')
-        ]
+          new FirebaseApp_.FetchResponse(400, 'Bad request or Time-out'),
+        ];
       }
     }
   }
   // For multiple request, use fetchAll()
-  else{
+  else {
     try {
       responses = UrlFetchApp.fetchAll(finalRequests);
-    }
-    catch(e){
+    } catch (e) {
       // <e> will contain the problematic URL (only one) in clear, so with the secret if provided.
       // As we are not able to clearly tell which request crashed, and we will not retry with excluding request one by one
       throw new Error(FirebaseApp_.NORMALIZED_ERRORS.GLOBAL_CRASH);
@@ -557,19 +576,19 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
   // to push all requests that should be retried
   var retry = {
     finalReq: [],
-    originalReq: []
+    originalReq: [],
   };
   
   // Init exponential back-off counter
   n = n || 0;
   
   // Process all responses
-  for (var i = 0; i < responses.length; i++){
+  for (var i = 0; i < responses.length; i++) {
     var responseCode = responses[i].getResponseCode();
     
     // print=silent, used to improve write performance returns a 204 No Content on success
     // https://firebase.google.com/docs/database/rest/save-data#section-rest-write-performance
-    if (responseCode === 204){
+    if (responseCode === 204) {
       originalsRequests[i].response = undefined;
       
       // Delete possible previous error (when in re-try)
@@ -582,7 +601,7 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
     
     // if response content is a string and contains the Firebase secret, assume it's an error on which a retry is needed
     // and replace the error returned by a generic one to avoid throwing the secret
-    if (db.base.secret && typeof responseContent === 'string' && responseContent.indexOf(db.base.secret) !== -1){
+    if (db.base.secret && typeof responseContent === 'string' && responseContent.indexOf(db.base.secret) !== -1) {
       errorCount += 1;
       
       originalsRequests[i].error = new Error(FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN);
@@ -596,10 +615,9 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
     var errorMessage;
     var responseParsed;
     // try parsing response
-    try{
+    try {
       responseParsed = JSON.parse(responseContent);
-    }
-    catch(e){
+    } catch (e) {
       // if responseContent is undefined => internal error on UrlFetch service, try again
       // It is caught as JSON.parse(undefined) fails ("Unexpected token")
       errorMessage = FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN;
@@ -610,8 +628,9 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
       errorCount += 1;
       
       // Add the response code to the error message if it comes from the response
-      if (responseParsed && responseParsed.error) originalsRequests[i].error = new Error(responseCode + " - " + responseParsed.error);
-      else originalsRequests[i].error = new Error(errorMessage || FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN);
+      originalsRequests[i].error = responseParsed && responseParsed.error
+        ? new Error(responseCode +' - '+ responseParsed.error)
+        : new Error(errorMessage || FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN);
       
       retry.finalReq.push(finalRequests[i]);
       retry.originalReq.push(originalsRequests[i]);
@@ -623,10 +642,10 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
     if (responseCode === 200) {
       
       // For POST request, the result is a JSON {"name": "$newKey"} and we want to return the $newKey
-      if (finalRequests[i].method === 'post' && finalRequests[i].headers['X-HTTP-Method-Override'] !== 'PATCH'){
+      if (finalRequests[i].method === 'post' && finalRequests[i].headers['X-HTTP-Method-Override'] !== 'PATCH') {
         originalsRequests[i].response = responseParsed && responseParsed['name'] || '';
       }
-      else{
+      else {
         originalsRequests[i].response = responseParsed;
       }
       
@@ -650,11 +669,11 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
   // and - for the first try - only retry if
   // there are less than 100 errors and the error number account for less than a quarter of the requests
   // This is to avoid emptying the UrlFetchApp quota for nothing
-  if (errorCount && n <= 6 && (n > 0 || (errorCount <= 100 && errorCount < originalsRequests.length / 4))){
+  if (errorCount && n <= 6 && (n > 0 || (errorCount <= 100 && errorCount < originalsRequests.length / 4))) {
     // Exponential back-off is needed as server errors are more and more common on Firebase
     Utilities.sleep((Math.pow(2, n) * 1000) + (Math.round(Math.random() * 1000)));
     
-    FirebaseApp_._sendAllRequests(retry.finalReq, retry.originalReq, db, n+1);
+    FirebaseApp_._sendAllRequests(retry.finalReq, retry.originalReq, db, n + 1);
   }
 };
 
@@ -667,7 +686,7 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
  *
  * @constructor
  */
-FirebaseApp_.FetchResponse = function(responseCode, responseContent){
+FirebaseApp_.FetchResponse = function (responseCode, responseContent) {
   this.code = responseCode;
   this.content = responseContent;
 };
