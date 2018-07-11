@@ -517,8 +517,8 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
   // Store each response in an object with the respective Firebase path as key
   for (var j = 0; j < initialRequests.length; j++) {
     data.push('response' in initialRequests[j]
-      ? initialRequests[j].response 
-      : initialRequests[j].error
+      ? initialRequests[j].response
+      : initialRequests[j].error,
     );
   }
   
@@ -624,12 +624,12 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
     }
     
     // Retry on specific response codes, specific error messages or if we failed to parse the response
-    if (FirebaseApp_._errorCodeList[responseCode] || !(responseParsed && responseParsed.error && FirebaseApp_.NORETRY_ERRORS[responseParsed.error]) || errorMessage) {
+    if (FirebaseApp_._errorCodeList[responseCode] || errorMessage || (responseParsed && responseParsed.error && !FirebaseApp_.NORETRY_ERRORS[responseParsed.error])) {
       errorCount += 1;
       
       // Add the response code to the error message if it comes from the response
       originalsRequests[i].error = responseParsed && responseParsed.error
-        ? new Error(responseCode +' - '+ responseParsed.error)
+        ? new Error(responseCode + ' - ' + responseParsed.error)
         : new Error(errorMessage || FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN);
       
       retry.finalReq.push(finalRequests[i]);
