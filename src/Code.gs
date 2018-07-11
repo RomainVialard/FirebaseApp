@@ -516,10 +516,7 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
   
   // Store each response in an object with the respective Firebase path as key
   for (var j = 0; j < initialRequests.length; j++) {
-    data.push('response' in initialRequests[j]
-      ? initialRequests[j].response
-      : initialRequests[j].error,
-    );
+    data.push('response' in initialRequests[j] ? initialRequests[j].response : initialRequests[j].error);
   }
   
   return data;
