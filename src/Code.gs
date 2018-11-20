@@ -489,6 +489,11 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
     // Add authToken if needed
     authToken && (initialRequests[i].optQueryParameters['auth'] = authToken);
     
+    // Query parameters in URLs aren't parsed correctly (and are not RFC-compliant, according to RFC 3986, Section 2).
+    // To parse URLs in queries correctly, we need to add the X-Firebase-Decoding: 1 header to all REST requests.
+    requestParam.headers['X-Firebase-Decoding'] = 1;
+    // This workaround is temporary. An update expected in February 2019 will resolve issues with parsing URLs in query parameters.
+    // Learn more: https://firebase.google.com/support/releases#november_12_2018
     
     // Build parameters before adding them in the url
     var parameters = [];
