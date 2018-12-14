@@ -625,21 +625,6 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
       errorMessage = FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN;
     }
     
-    // Retry on specific response codes, specific error messages or if we failed to parse the response
-    if (FirebaseApp_._errorCodeList[responseCode] || errorMessage || (responseParsed && responseParsed.error && !FirebaseApp_.NORETRY_ERRORS[responseParsed.error])) {
-      errorCount += 1;
-      
-      // Add the response code to the error message if it comes from the response
-      originalsRequests[i].error = responseParsed && responseParsed.error
-        ? new Error(responseCode + ' - ' + responseParsed.error)
-        : new Error(errorMessage || FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN);
-      
-      retry.finalReq.push(finalRequests[i]);
-      retry.originalReq.push(originalsRequests[i]);
-      
-      continue;
-    }
-    
     // Save valid response
     if (responseCode === 200) {
       
@@ -659,6 +644,21 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
     
     if (responseCode === 401) {
       originalsRequests[i].error = new Error(responseParsed.error || FirebaseApp_.NORMALIZED_ERRORS.PERMISSION_DENIED);
+      
+      continue;
+    }
+    
+    // Retry on specific response codes, specific error messages or if we failed to parse the response
+    if (FirebaseApp_._errorCodeList[responseCode] || errorMessage || (responseParsed && responseParsed.error && !FirebaseApp_.NORETRY_ERRORS[responseParsed.error])) {
+      errorCount += 1;
+      
+      // Add the response code to the error message if it comes from the response
+      originalsRequests[i].error = responseParsed && responseParsed.error
+        ? new Error(responseCode + ' - ' + responseParsed.error)
+        : new Error(errorMessage || FirebaseApp_.NORMALIZED_ERRORS.TRY_AGAIN);
+      
+      retry.finalReq.push(finalRequests[i]);
+      retry.originalReq.push(originalsRequests[i]);
       
       continue;
     }
