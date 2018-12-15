@@ -626,7 +626,7 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
     }
     
     // Save valid response
-    if (responseCode === 200) {
+    if (responseCode === 200 && !errorMessage) {
       
       // For POST request, the result is a JSON {"name": "$newKey"} and we want to return the $newKey
       if (finalRequests[i].method === 'post' && finalRequests[i].headers['X-HTTP-Method-Override'] !== 'PATCH') {
