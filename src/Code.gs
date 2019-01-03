@@ -40,6 +40,7 @@ FirebaseApp_.Base = function (base) {
  * @return {FirebaseApp_.Base} the Database found at the given URL
  */
 function getDatabaseByUrl(url, optSecret) {
+  if (! new RegExp(".*/$").test(url)) url+= "/";
   return new FirebaseApp_.Base({
     url: url,
     secret: optSecret || '',
