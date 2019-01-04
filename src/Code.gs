@@ -40,11 +40,37 @@ FirebaseApp_.Base = function (base) {
  * @return {FirebaseApp_.Base} the Database found at the given URL
  */
 function getDatabaseByUrl(url, optSecret) {
-  if (! new RegExp(".*/$").test(url)) url+= "/";
+  if (! /\/$/.test(url)) url+= "/";
   return new FirebaseApp_.Base({
     url: url,
     secret: optSecret || '',
   });
+}
+
+/**
+ * Lists each Firebase Project accessible to the caller.
+ * Requires the following scope to exist in the script manifest: https://www.googleapis.com/auth/firebase
+ * Requires to enable the Firebase Management API in the Cloud Platform project.
+ *
+ * @return {array} the list of Projects that are accessible to the caller.
+ */
+function listProjects() {
+  var projects = [];
+  var url = "https://firebase.googleapis.com/v1beta1/projects";
+  var nextPageToken = null;
+  var options = {
+    'headers': {
+      "Authorization": "Bearer " + ScriptApp.getOAuthToken()
+    }
+  };
+  do {
+    var reqUrl = (!nextPageToken) ? url : url + "?pageToken=" + nextPageToken;
+    var response = JSON.parse(UrlFetchApp.fetch(reqUrl, options).getContentText());
+    nextPageToken = response.nextPageToken;
+    projects = projects.concat(response.results);
+  } while (response.results.length && nextPageToken);
+  
+  return projects;
 }
 
 /**
@@ -412,6 +438,7 @@ FirebaseApp_.NORETRY_ERRORS[FirebaseApp_.NORMALIZED_ERRORS.INVALID_DATA] = true;
 this['FirebaseApp'] = {
   // Add local alias to run the library as normal code
   getDatabaseByUrl: getDatabaseByUrl,
+  listProjects: listProjects,                                           
   encodeAsFirebaseKey: encodeAsFirebaseKey,
   
   NORMALIZED_ERRORS: FirebaseApp_.NORMALIZED_ERRORS,
