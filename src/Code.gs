@@ -66,9 +66,11 @@ function listProjects() {
   do {
     var reqUrl = (!nextPageToken) ? url : url + "?pageToken=" + nextPageToken;
     var response = JSON.parse(UrlFetchApp.fetch(reqUrl, options).getContentText());
-    nextPageToken = response.nextPageToken;
-    projects = projects.concat(response.results);
-  } while (response.results.length && nextPageToken);
+    if (response.results) {
+      nextPageToken = response.nextPageToken;
+      projects = projects.concat(response.results);
+    }
+  } while (response.results && response.results.length && nextPageToken);
   
   return projects;
 }
