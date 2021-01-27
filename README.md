@@ -15,8 +15,8 @@ Library's script ID: **1VlYLzhwx0YEoxIe62eItLAZeobVt_l-GQUKt2MXXuBHFVsqBkl9C_yBB
 
 Documentation should be migrated to GitHub
 
-In the meantime, here's the reference guide:
+In the meantime, here's the reference guide:  
 https://sites.google.com/site/scriptsexamples/new-connectors-to-google-services/firebase/reference
 
-And tutorials:
+And tutorials:  
 https://sites.google.com/site/scriptsexamples/new-connectors-to-google-services/firebase/tutorials
