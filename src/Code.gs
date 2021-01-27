@@ -2,7 +2,7 @@
  FirebaseApp
  https://github.com/RomainVialard/FirebaseApp
  
- Copyright (c) 2016 - 2018 Romain Vialard - Ludovic Lefebure - Spencer Easton - Jean-Rémi Delteil - Simon Debray
+ Copyright (c) 2016 - 2021 Romain Vialard - Ludovic Lefebure - Spencer Easton - Jean-Rémi Delteil - Simon Debray
  
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -28,14 +28,15 @@ var FirebaseApp_ = {};
 
 /**
  * @typedef {Object} FirebaseApp_.Base
- * @property {baseClass_.createAuthToken} createAuthToken
- * @property {baseClass_.getData} getData
- * @property {baseClass_.getAllData} getAllData
- * @property {baseClass_.pushData} pushData
- * @property {baseClass_.setData} setData
- * @property {baseClass_.updateData} updateData
- * @property {baseClass_.removeData} removeData
- * @property {baseClass_.getUrlFromPath} getUrlFromPath
+ * @property {Base} base
+ * @property {baseClass_.createAuthToken} [createAuthToken]
+ * @property {baseClass_.getData} [getData]
+ * @property {baseClass_.getAllData} [getAllData]
+ * @property {baseClass_.pushData} [pushData]
+ * @property {baseClass_.setData} [setData]
+ * @property {baseClass_.updateData} [updateData]
+ * @property {baseClass_.removeData} [removeData]
+ * @property {baseClass_.getUrlFromPath} [getUrlFromPath]
  */
 
 /**
@@ -52,14 +53,16 @@ FirebaseApp_.Base = function (base) {
  * @param  {string} url - the database url
  * @param  {string} [optSecret] - a Firebase app secret
  *
- * @return {FirebaseApp_.Base} the Database found at the given URL
+ * @returns {FirebaseApp_.Base} the Database found at the given URL
  */
 function getDatabaseByUrl(url, optSecret) {
   if (!new RegExp(".*/$").test(url)) url += "/";
-  return new FirebaseApp_.Base({
+  /** @type {Base} */
+  var base = {
     url: url,
     secret: optSecret || '',
-  });
+  };
+  return new FirebaseApp_.Base(base);
 }
 
 /**
@@ -70,7 +73,7 @@ function getDatabaseByUrl(url, optSecret) {
  *
  * @param  {string} string - the string to encode
  *
- * @return {string} the encoded string
+ * @returns {string} the encoded string
  */
 function encodeAsFirebaseKey(string) {
   return string.replace(/\%/g, '%25')
@@ -87,7 +90,7 @@ function encodeAsFirebaseKey(string) {
  *
  * @param  {string} string - the encoded Firebase key
  *
- * @return {string} the decoded string
+ * @returns {string} the decoded string
  */
 function decodeFirebaseKey(string) {
   return string.replace(/\%25/g, '%')
@@ -107,7 +110,7 @@ function decodeFirebaseKey(string) {
  * @param  {object} firebaseConfig - see the "Get config object for your web app" section in the page linked below.
  *                                   https://support.google.com/firebase/answer/7015592?hl=en
  * @param  {string} idToken - an OpenID Connect identity token retrieved via ScriptApp.getIdentityToken()
- * @return {object} the auth token granting access to firebase
+ * @returns {object} the auth token granting access to firebase
  */
 function signInWithIdp(firebaseConfig, idToken) {
   var url = 'https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=' + firebaseConfig.apiKey;
@@ -145,7 +148,7 @@ var baseClass_ = FirebaseApp_.Base.prototype;
  * @param  {object} optAuthData key-pairs of data to be associated to this user.
  * @param  {string} serviceAccountEmail the email of the service account used to generate this token
  * @param  {string} privateKey the private key of this service account
- * @return {object} the auth token granting access to firebase
+ * @returns {object} the auth token granting access to firebase
  */
 baseClass_.createAuthToken = function (userEmail, optAuthData, serviceAccountEmail, privateKey) {
   if (arguments.length > 2) { //more then two means they want to use a service account
@@ -192,7 +195,7 @@ FirebaseApp_._CustomClaimBlackList = {
  * @param  {string} userEmail - the email account of the user you want to authenticate
  * @param  {object} optCustomClaims - key-pairs of data to be associated to this user (aka custom claims).
  *
- * @return {object} the auth token granting access to firebase
+ * @returns {object} the auth token granting access to firebase
  */
 baseClass_.createAuthTokenFromServiceAccount_ = function (userEmail, optCustomClaims) {
   if (!("serviceAccountEmail" in this.base) || !("privateKey" in this.base)) {
@@ -231,10 +234,10 @@ baseClass_.createAuthTokenFromServiceAccount_ = function (userEmail, optCustomCl
     throw new Error(FirebaseApp_.NORMALIZED_ERRORS.INVALID_CUSTOM_CLAIMS_LENGTH);
   }
 
-  body = JSON.stringify(body); // Stringified after adding optional auth data
-  body = Utilities.base64Encode(body);
-  var signature = Utilities.computeRsaSha256Signature(header + "." + body, this.base.privateKey);
-  return header + "." + body + "." + Utilities.base64Encode(signature);
+  var stringifiedBody = JSON.stringify(body); // Stringified after adding optional auth data
+  stringifiedBody = Utilities.base64Encode(stringifiedBody);
+  var signature = Utilities.computeRsaSha256Signature(header + "." + stringifiedBody, this.base.privateKey);
+  return header + "." + stringifiedBody + "." + Utilities.base64Encode(signature);
 };
 
 /**
@@ -242,7 +245,7 @@ baseClass_.createAuthTokenFromServiceAccount_ = function (userEmail, optCustomCl
  *
  * @param  {string} userEmail the email account of the user you want to authenticate
  * @param  {object} optCustomClaims - key-pairs of data to be associated to this user (aka custom claims).
- * @return {object} the auth token granting access to firebase
+ * @returns {object} the auth token granting access to firebase
  */
 baseClass_.createLegacyAuthToken_ = function (userEmail, optCustomClaims) {
   var header = JSON.stringify({
@@ -262,17 +265,18 @@ baseClass_.createLegacyAuthToken_ = function (userEmail, optCustomClaims) {
       payload.d[item] = optCustomClaims[item];
     });
   }
-  payload = JSON.stringify(payload); // Stringified after adding optional auth data
-  payload = Utilities.base64EncodeWebSafe(payload);
-  var hmac = Utilities.computeHmacSha256Signature(header + "." + payload, this.base.secret);
-  return header + "." + payload + "." + Utilities.base64EncodeWebSafe(hmac);
+  var stringifiedPayload = JSON.stringify(payload); // Stringified after adding optional auth data
+  stringifiedPayload = Utilities.base64EncodeWebSafe(stringifiedPayload);
+  var hmac = Utilities.computeHmacSha256Signature(header + "." + stringifiedPayload, this.base.secret);
+  return header + "." + stringifiedPayload + "." + Utilities.base64EncodeWebSafe(hmac);
 };
 
 /**
+ * https://firebase.google.com/docs/reference/rest/database?hl=en#section-query-parameters
  * @typedef {Object} OptQueryParameters
  * @property {string} [auth]
- * @property {string} [shallow]
- * @property {string} [print]
+ * @property {string} [shallow] - Set this to true to limit the depth of the data returned at a location.
+ * @property {string} [print] - Formats the data returned in the response from the server.
  * @property {string} [limitToFirst]
  * @property {string} [limitToLast]
  */
@@ -283,7 +287,7 @@ baseClass_.createLegacyAuthToken_ = function (userEmail, optCustomClaims) {
  * @param  {string} path - the path where the data is stored
  * @param  {OptQueryParameters} [optQueryParameters] - a set of query parameters
  *
- * @return {object} the data found at the given path
+ * @returns {object} the data found at the given path
  */
 baseClass_.getData = function (path, optQueryParameters) {
   // Send request
@@ -307,7 +311,7 @@ baseClass_.getData = function (path, optQueryParameters) {
  *
  * @param  {Array.<string | FirebaseApp_.request>} requests - array of requests
  *
- * @return {object} responses to each requests
+ * @returns {object} responses to each requests
  */
 baseClass_.getAllData = function (requests) {
   return FirebaseApp_._buildAllRequests(requests, this);
@@ -320,7 +324,7 @@ baseClass_.getAllData = function (requests) {
  * @param  {object} data - the data to be written at the generated location
  * @param  {OptQueryParameters} [optQueryParameters] - a set of query parameters
  *
- * @return {string} the child name of the new data that was added
+ * @returns {string} the child name of the new data that was added
  */
 baseClass_.pushData = function (path, data, optQueryParameters) {
   // Send request
@@ -347,7 +351,7 @@ baseClass_.pushData = function (path, data, optQueryParameters) {
  * @param  {object} data - the data to be written at the specified path
  * @param  {OptQueryParameters} [optQueryParameters] - a set of query parameters
  *
- * @return {object} the data written
+ * @returns {object} the data written
  */
 baseClass_.setData = function (path, data, optQueryParameters) {
   // Send request
@@ -374,7 +378,7 @@ baseClass_.setData = function (path, data, optQueryParameters) {
  * @param  {object} data - the children to overwrite
  * @param  {OptQueryParameters} [optQueryParameters] a - set of query parameters
  *
- * @return {object} the data written
+ * @returns {object} the data written
  */
 baseClass_.updateData = function (path, data, optQueryParameters) {
   // Send request
@@ -400,7 +404,7 @@ baseClass_.updateData = function (path, data, optQueryParameters) {
  * @param  {string} path - the path where to delete data
  * @param  {OptQueryParameters} [optQueryParameters] - a set of query parameters
  * 
- * @return {null}
+ * @returns {null}
  */
 baseClass_.removeData = function (path, optQueryParameters) {
   // Send request
@@ -423,7 +427,7 @@ baseClass_.removeData = function (path, optQueryParameters) {
  * Gets the absolute URL from the specified path
  *
  * @param  {string} path - the path / location to convert to URL
- * @return {string} an encoded URL that is ready to be put into a browser
+ * @returns {string} an encoded URL that is ready to be put into a browser
  */
 baseClass_.getUrlFromPath = function (path) {
   var url = this.base.url;
@@ -496,17 +500,14 @@ this['FirebaseApp'] = {
 };
 
 /**
- * @typedef {{
- *   path: string
- *   [method]: 'get' | 'post' | 'put' | 'patch' | 'delete'
- *   [data]: *
- *   optQueryParameters: optQueryParameters
- *   
- *   [response]: Object
- *   [error]: Error
- * }} FirebaseApp_.request
+ * @typedef {Object} FirebaseApp_.request
+ * @property {string} path
+ * @property {'get' | 'post' | 'put' | 'patch' | 'delete'} [method]
+ * @property {any} [data]
+ * @property {OptQueryParameters} [optQueryParameters]
+ * @property {Object} [response]
+ * @property {Error} [error]
  */
-
 
 /**
  * Pre-build all Urls
@@ -514,7 +515,7 @@ this['FirebaseApp'] = {
  * @param {Array.<string | FirebaseApp_.request>} requests
  * @param {FirebaseApp_.Base} db information of the database
  *
- * @return {Array.<Object | *>}
+ * @returns {Array.<Object | *>}
  */
 FirebaseApp_._buildAllRequests = function (requests, db) {
   var authToken = db.base.secret,
@@ -522,7 +523,7 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
     headers = {};
 
   // Deep copy of object to avoid changing it
-  /** @type {Array.<string | FirebaseApp_.request>} */
+  /** @type {Array.<FirebaseApp_.request>} */
   var initialRequests = JSON.parse(JSON.stringify(requests));
 
   // Check if authentication done via OAuth 2 access token
@@ -538,7 +539,7 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
     if (typeof initialRequests[i] === 'string') {
       initialRequests[i] = {
         optQueryParameters: {},
-        path: initialRequests[i],
+        path: initialRequests[i].toString(),
       };
     }
     else {
@@ -612,12 +613,12 @@ FirebaseApp_._buildAllRequests = function (requests, db) {
  * Send all request using UrlFetchApp.fetchAll()
  * The results are directly written in the originalsRequests objects (in the <error> and <response> fields
  *
- * @param {Array.<{url: string, headers: {}, muteHttpExceptions: boolean, method: string, [data]: string}>} finalRequests
+ * @param {Array.<{url: string, headers: {}, muteHttpExceptions: boolean, method: string, data?: string, payload?: string}>} finalRequests
  * @param {Array<FirebaseApp_.request>} originalsRequests - location of each data
  * @param {FirebaseApp_.Base} db - information of the database
  * @param {number} [n] - exponential back-off count
  *
- * @return {*}
+ * @returns {*}
  * @private
  */
 FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, n) {
@@ -661,7 +662,7 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
       }
       else {
         responses = [
-          new FirebaseApp_.FetchResponse('XXX', '{"error":"' + FirebaseApp_.NORMALIZED_ERRORS.URLFETCHAPP_CRASH + '"}'),
+          new FirebaseApp_.FetchResponse(0, '{"error":"' + FirebaseApp_.NORMALIZED_ERRORS.URLFETCHAPP_CRASH + '"}'),
         ];
       }
     }
@@ -851,7 +852,7 @@ FirebaseApp_._sendAllRequests = function (finalRequests, originalsRequests, db, 
  *
  * @param  {object} object - the object on which all keys should be encoded
  *
- * @return {object} the encoded object
+ * @returns {object} the encoded object
  */
 FirebaseApp_._encodeAllKeys = function (object) {
   var keysToReplace = {};
@@ -888,7 +889,7 @@ FirebaseApp_.FetchResponse = function (responseCode, responseContent) {
 /**
  * Return set HTTP response code
  *
- * @return {number}
+ * @returns {number}
  */
 FirebaseApp_.FetchResponse.prototype.getResponseCode = function () {
   return this.code;
@@ -897,7 +898,7 @@ FirebaseApp_.FetchResponse.prototype.getResponseCode = function () {
 /**
  * Return set HTTP response content text
  *
- * @return {string | undefined}
+ * @returns {string | undefined}
  */
 FirebaseApp_.FetchResponse.prototype.getContentText = function () {
   return this.content;
